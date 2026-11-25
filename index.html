@@ -5,6 +5,8 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Habit Tracker">
 <meta name="theme-color" content="#131317">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -644,6 +646,51 @@
   .bd-lead {
     font-size: 13px; color: var(--ink-soft);
     margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-soft);
+  }
+  /* ---------- phones and small tablets ---------- */
+  .streak-chip:empty { display: none; }
+
+  @media (pointer: coarse) {
+    .icon-btn { width: 40px; height: 40px; font-size: 16px; }
+    .info-btn { width: 32px; height: 32px; }
+    .btn { padding: 9px 13px; }
+  }
+
+  @media (max-width: 600px) {
+    .wrap { padding-inline: 16px; padding-block: 18px 56px; }
+    .head { flex-direction: column; align-items: stretch; gap: 14px; }
+    .head-date { font-size: 27px; }
+    .status { margin-top: 10px; }
+    .date-nav { margin-top: 10px; }
+
+    /* today's habits as one slim strip instead of a tall column */
+    .today-col-wrap { flex-direction: row; gap: 10px; }
+    .today-col-label { writing-mode: horizontal-tb; transform: none; }
+    .today-col { flex: 1; flex-direction: row; gap: 3px; padding: 6px; }
+    .today-col i { flex: 1; width: auto; height: 12px; }
+
+    .arc { margin-top: 18px; }
+    .list-head { margin-top: 22px; }
+
+    .row { gap: 11px; padding: 12px 4px 12px 2px; }
+    .row-text { order: 1; }
+    .box { order: 0; }
+    .week-chip, .streak-chip { order: 2; }
+    .info-btn { order: 3; }
+    .week-chip { font-size: 10px; padding: 2px 5px; }
+
+    .stats { gap: 22px; margin-top: 26px; }
+    .stat-n { font-size: 22px; }
+
+    /* the year: newest month first, nothing for months still to come */
+    .grid-section { margin-top: 34px; }
+    .months { display: flex; flex-direction: column-reverse; gap: 14px; }
+    .month-block:not(:has(.day-col:not(.future))) { display: none; }
+    /* and none for months with nothing logged, except this one */
+    .month-block:has(.m-count:empty):not(:has(.is-today)) { display: none; }
+    .grid-hint { height: auto; min-height: 2.9em; }
+
+    .sheet { padding: 18px 16px calc(26px + env(safe-area-inset-bottom, 0px)); max-height: 88vh; }
   }
 </style>
 
