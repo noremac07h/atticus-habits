@@ -1,0 +1,3226 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Habit Tracker</title>
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Habit Tracker">
+<meta name="theme-color" content="#131317">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg:         #ECEAE6;
+    --bg-tint-a:  rgba(201, 146, 41, 0.10);
+    --bg-tint-b:  rgba(92, 88, 168, 0.10);
+    --surface:    #FBFAF8;
+    --surface-2:  #F4F2EE;
+    --scrim:      rgba(26, 24, 20, 0.42);
+    --ink:        #1A1A1F;
+    --ink-soft:   #5B5966;
+    --ink-faint:  #8D8B99;
+    --line:       #D6D2CB;
+    --line-soft:  #E4E0D9;
+    --empty:      #DAD6CE;
+    --focus:      #3C6FA8;
+    --danger:     #A33F3F;
+    --chroma: 0.142;
+    --lum:    0.585;
+    --cell: 8px;
+    --gap: 2px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:         #131317;
+      --bg-tint-a:  rgba(224, 168, 64, 0.10);
+      --bg-tint-b:  rgba(128, 122, 214, 0.12);
+      --surface:    #1C1C22;
+      --surface-2:  #16161B;
+      --scrim:      rgba(0, 0, 0, 0.62);
+      --ink:        #EAE8EF;
+      --ink-soft:   #9B98A8;
+      --ink-faint:  #6D6A7A;
+      --line:       #2E2E37;
+      --line-soft:  #24242C;
+      --empty:      #31313B;
+      --focus:      #7BAEE0;
+      --danger:     #D98080;
+      --chroma: 0.140;
+      --lum:    0.740;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg:         #131317;
+    --bg-tint-a:  rgba(224, 168, 64, 0.10);
+    --bg-tint-b:  rgba(128, 122, 214, 0.12);
+    --surface:    #1C1C22;
+    --surface-2:  #16161B;
+    --scrim:      rgba(0, 0, 0, 0.62);
+    --ink:        #EAE8EF;
+    --ink-soft:   #9B98A8;
+    --ink-faint:  #6D6A7A;
+    --line:       #2E2E37;
+    --line-soft:  #24242C;
+    --empty:      #31313B;
+    --focus:      #7BAEE0;
+    --danger:     #D98080;
+    --chroma: 0.140;
+    --lum:    0.740;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background:
+      radial-gradient(120% 60% at 8% -8%, var(--bg-tint-a), transparent 62%),
+      radial-gradient(110% 55% at 95% 105%, var(--bg-tint-b), transparent 60%),
+      var(--bg);
+    background-attachment: fixed;
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: 34px 72px; }
+
+  .mono, .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .eyebrow {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.13em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+
+  /* ---------- header ---------- */
+
+  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+
+  .head-date {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: clamp(26px, 5.6vw, 36px); font-weight: 500;
+    letter-spacing: -0.025em; line-height: 1.08; margin: 7px 0 0; text-wrap: balance;
+  }
+
+  .status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin-top: 12px; }
+
+  .status-core {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: 4px;
+    border: 1px solid var(--line); color: var(--ink-soft); background: var(--surface);
+  }
+
+  .status-core.clear {
+    border-color: transparent;
+    background: color-mix(in oklab, var(--ok) 20%, transparent);
+    color: var(--ok);
+  }
+
+  .status-count {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 13px; color: var(--ink-soft);
+  }
+  .status-count b { color: var(--ink); font-weight: 600; }
+
+  .status-next { font-size: 13.5px; color: var(--ink-soft); }
+  .status-next b { color: var(--ink); font-weight: 500; }
+
+  .date-nav { display: flex; align-items: center; gap: 7px; margin-top: 14px; }
+  .date-rel {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 11.5px; color: var(--ink-faint); margin-left: 3px;
+  }
+
+  .today-col-wrap { display: flex; align-items: center; gap: 11px; }
+  .today-col {
+    display: flex; flex-direction: column; gap: 3px; padding: 8px;
+    border: 1px solid var(--line); border-radius: 5px; background: var(--surface);
+  }
+  .today-col i {
+    display: block; width: 26px; height: calc(var(--cell) + 2px);
+    border-radius: 2px; background: var(--empty); transition: background 150ms ease;
+  }
+  .today-col-label {
+    writing-mode: vertical-rl; transform: rotate(180deg);
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint);
+  }
+
+  /* category band — the page's colour key, in one strip */
+  .arc { display: flex; gap: 3px; margin: 24px 0 0; }
+  .arc-seg { height: 5px; border-radius: 3px; flex: 1 1 0; background: var(--seg); }
+
+  /* ---------- buttons ---------- */
+
+  .btn {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-soft); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 4px; padding: 6px 11px; cursor: pointer;
+  }
+  .btn:hover { color: var(--ink); border-color: var(--ink-faint); }
+  .btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .btn[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+  .icon-btn {
+    width: 28px; height: 28px; display: grid; place-items: center;
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px;
+    color: var(--ink-soft); font-size: 13px; line-height: 1; cursor: pointer;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  .icon-btn:hover:not(:disabled) { color: var(--ink); border-color: var(--ink-faint); }
+  .icon-btn:disabled { opacity: 0.3; cursor: default; }
+  .icon-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .icon-btn.del:hover { color: var(--danger); border-color: var(--danger); }
+
+  /* ---------- checklist ---------- */
+
+  .list-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 14px; margin-top: 30px;
+  }
+  .groups { margin-top: 14px; }
+  .group + .group { margin-top: 24px; }
+
+  .group-head { display: flex; align-items: center; gap: 10px; margin-bottom: 3px; }
+  .group-head .rule { flex: 1; height: 1px; background: var(--line-soft); }
+  .now-chip {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 3px;
+    background: color-mix(in oklab, var(--ink) 12%, transparent); color: var(--ink);
+  }
+
+  .group.core-block {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px 4px;
+    background: var(--surface);
+  }
+
+  /* core sits at the top of its own section, marked rather than moved */
+  .row.is-core .box { border-radius: 50%; border-width: 2px; }
+  .row.is-core .row-name { font-weight: 600; }
+  .core-dot { color: var(--hue); margin-left: 7px; font-size: 15px; vertical-align: 1px; }
+
+  .row.not-due { opacity: 0.52; }
+  .row.not-due .box { border-style: dashed; }
+  .row.not-due:hover { opacity: 0.8; }
+
+  .streak-chip {
+    flex: none; min-width: 34px; text-align: right;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 11px; color: var(--ink-faint); font-variant-numeric: tabular-nums;
+  }
+  .streak-chip.hot { color: var(--hue); }
+
+  .row {
+    display: flex; align-items: center; gap: 14px; width: 100%;
+    padding: 12px 8px 12px 6px;
+    background: none; border: 0; border-bottom: 1px solid var(--line-soft);
+    color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 4px;
+  }
+  .row:hover { background: var(--surface-2); }
+  .row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+  .core-block .row:last-of-type { border-bottom: 0; }
+
+  .box {
+    flex: none; width: 25px; height: 25px;
+    border: 1.5px solid var(--line); border-radius: 4px; background: var(--surface);
+    position: relative;
+    transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+  }
+  .core-block .box { border-radius: 50%; border-width: 2px; }
+  .box::after {
+    content: ""; position: absolute;
+    border-left: 2.2px solid #fff; border-bottom: 2.2px solid #fff;
+    width: 11px; height: 6px; margin: 6px auto auto 5px; inset: 0 0 auto 0;
+    transform: rotate(-45deg) scale(0.5); opacity: 0;
+    transition: opacity 140ms ease, transform 140ms cubic-bezier(.3,1.4,.5,1);
+  }
+  .row[aria-pressed="true"] .box {
+    background: var(--hue); border-color: var(--hue);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--hue) 18%, transparent);
+  }
+  .row[aria-pressed="true"] .box::after { opacity: 1; transform: rotate(-45deg) scale(1); }
+
+  .row-text { flex: 1; min-width: 0; }
+  .row-name { display: block; font-weight: 500; letter-spacing: -0.005em; }
+  .core-block .row-name { font-weight: 600; }
+  .row[aria-pressed="true"] .row-name { color: var(--ink-soft); }
+  .row-detail {
+    display: block; font-size: 12.5px; color: var(--ink-faint);
+    margin-top: 1px; overflow-wrap: break-word;
+  }
+
+  .week-chip {
+    flex: none;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 10.5px; letter-spacing: 0.04em;
+    padding: 2px 6px; border-radius: 3px;
+    background: color-mix(in oklab, var(--hue) 15%, transparent);
+    color: var(--hue);
+  }
+  .week-chip.met { background: color-mix(in oklab, var(--ok) 20%, transparent); color: var(--ok); }
+
+  .info-btn {
+    flex: none; width: 24px; height: 24px; border-radius: 50%;
+    border: 1px solid var(--line); background: none; color: var(--ink-faint);
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 11px; line-height: 1; cursor: pointer; display: grid; place-items: center;
+  }
+  .info-btn:hover { color: var(--ink); border-color: var(--ink-faint); }
+  .info-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  /* ---------- edit mode ---------- */
+
+  .edit-note { font-size: 12.5px; color: var(--ink-faint); margin: 10px 0 0; }
+
+  .erow {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 12px; border: 1px solid var(--line-soft); border-radius: 6px;
+    background: var(--surface); margin-top: 8px;
+  }
+  .erow.retired { opacity: 0.6; background: none; border-style: dashed; }
+
+  .erow-swatch {
+    flex: none; width: 14px; align-self: stretch; min-height: 30px;
+    border: 0; padding: 0; border-radius: 4px;
+    background:
+      repeating-linear-gradient(to bottom, rgba(255,255,255,0.55) 0 2px, transparent 2px 5px),
+      var(--hue);
+    cursor: grab; touch-action: none;
+  }
+  .erow-swatch:active { cursor: grabbing; }
+  .erow-swatch:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .erow.retired .erow-swatch { cursor: default; background: var(--hue); }
+
+  .erow-name { flex: 1; min-width: 0; font-weight: 500; }
+  .erow-sub { font-size: 12px; color: var(--ink-faint); font-weight: 400; }
+  .etools { display: flex; gap: 4px; align-items: center; flex: none; }
+
+  .erow.dragging {
+    position: fixed; z-index: 60; margin: 0;
+    box-shadow: 0 14px 34px rgba(0,0,0,0.35); cursor: grabbing; pointer-events: none;
+  }
+  .drag-placeholder {
+    border: 1.5px dashed var(--line); border-radius: 6px; margin-top: 8px;
+    background: color-mix(in oklab, var(--ink) 4%, transparent);
+  }
+  .egroup-head { display: flex; align-items: center; gap: 10px; margin: 22px 0 2px; }
+  .egroup-head .rule { flex: 1; height: 1px; background: var(--line-soft); }
+
+  .add-btn {
+    width: 100%; margin-top: 10px; padding: 11px;
+    background: none; border: 1px dashed var(--line); border-radius: 6px;
+    color: var(--ink-soft);
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 12px; letter-spacing: 0.06em; cursor: pointer;
+  }
+  .add-btn:hover { color: var(--ink); border-color: var(--ink-faint); }
+
+  .retired-head { display: flex; align-items: center; gap: 10px; margin: 26px 0 2px; }
+  .retired-head .rule { flex: 1; height: 1px; background: var(--line-soft); }
+
+  /* ---------- stats ---------- */
+
+  .stats {
+    display: flex; gap: 30px; flex-wrap: wrap;
+    margin-top: 34px; padding-top: 22px; border-top: 1px solid var(--line);
+  }
+  .stat-n {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 25px; font-weight: 500; letter-spacing: -0.025em; display: block; margin-top: 2px;
+  }
+
+  /* ---------- grid ---------- */
+
+  .grid-section { margin-top: 46px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 16px 22px; margin: 14px 0 10px; }
+  .legend-cat { display: flex; flex-direction: column; gap: 3px; }
+  .legend-cat-name {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint);
+  }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-soft); }
+  .legend-item i { width: 11px; height: 11px; border-radius: 2px; background: var(--hue); flex: none; }
+  .legend-item .pct {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 11px; color: var(--ink-faint);
+  }
+  .legend-item.retired { opacity: 0.55; }
+  .retired-tag {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint);
+  }
+
+  .grid-hint {
+    font-size: 12.5px; color: var(--ink-faint); margin: 0 0 20px;
+    height: 2.9em;              /* fixed, so hovering a week never reflows the grid */
+    overflow: hidden;
+  }
+  .grid-hint b {
+    color: var(--ink); font-weight: 500;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+
+  .months { display: grid; grid-template-columns: repeat(auto-fill, minmax(262px, 1fr)); gap: 24px 22px; }
+
+  .month-block {
+    background: var(--surface-2); border: 1px solid var(--line-soft);
+    border-radius: 7px; padding: 11px 12px 12px;
+  }
+  .month-label {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 10.5px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 9px;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .month-label .m-count { letter-spacing: 0; opacity: 0.8; }
+
+  .month-days { display: flex; align-items: flex-start; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
+
+  .week {
+    display: flex; gap: var(--gap); flex: none;
+    padding: 3px; margin: -3px; border-radius: 4px; cursor: pointer;
+  }
+  .week:hover, .week.hot { background: color-mix(in oklab, var(--ink) 9%, transparent); }
+
+  .day-col { display: flex; flex-direction: column; gap: var(--gap); flex: none; }
+  .day-col i { display: block; width: var(--cell); height: var(--cell); border-radius: 2px; background: var(--empty); }
+  .day-col.future { opacity: 0.3; }
+  .day-col.is-today i:first-child { box-shadow: inset 0 0 0 1.5px var(--ink-faint); }
+  .day-col.is-viewing i { box-shadow: inset 0 0 0 1px var(--ink); }
+  .day-col .catgap { height: 3px; background: none; border-radius: 0; }
+
+  /* ---------- sheets ---------- */
+
+  .scrim {
+    position: fixed; inset: 0; background: var(--scrim);
+    display: grid; place-items: end center; z-index: 80; padding: 0;
+  }
+  .sheet {
+    background: var(--bg); color: var(--ink);
+    width: 100%; max-width: 620px; max-height: 92vh; overflow-y: auto;
+    border-radius: 14px 14px 0 0; border: 1px solid var(--line); border-bottom: 0;
+    padding: 20px 22px 32px;
+    box-shadow: 0 -10px 50px rgba(0,0,0,0.3);
+  }
+  @media (min-width: 680px) {
+    .scrim { place-items: center; padding: 24px; }
+    .sheet { border-radius: 12px; border-bottom: 1px solid var(--line); }
+  }
+
+  .sheet-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+  .sheet-title {
+    font-size: 20px; font-weight: 600; letter-spacing: -0.01em; margin: 6px 0 0; text-wrap: balance;
+  }
+  .cat-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--hue);
+  }
+  .cat-chip i { width: 9px; height: 9px; border-radius: 2px; background: var(--hue); }
+
+  .sheet-field { margin-top: 16px; }
+  .sheet-field > label {
+    display: block;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 5px;
+  }
+
+  .meta-grid {
+    display: flex; flex-wrap: wrap; gap: 14px 26px;
+    margin-top: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line-soft);
+  }
+  .meta-item { display: flex; flex-direction: column; gap: 2px; }
+  .meta-val { font-size: 14px; color: var(--ink); }
+
+  .read-body { margin: 0; font-size: 14.5px; color: var(--ink-soft); max-width: 62ch; }
+  .read-empty { margin: 0; font-size: 14px; color: var(--ink-faint); font-style: italic; }
+  .read-notes {
+    margin: 0; font: inherit; font-size: 14px; line-height: 1.6;
+    color: var(--ink-soft); white-space: pre-wrap; max-width: 62ch;
+  }
+  .sheet-stat b.hot { color: var(--ok); }
+
+  .cat-list { margin-top: 18px; }
+  .cat-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 12px; margin-top: 8px;
+    border: 1px solid var(--line-soft); border-radius: 6px; background: var(--surface);
+  }
+  .cat-sw { flex: none; width: 14px; align-self: stretch; min-height: 44px; border-radius: 4px; background: var(--hue); }
+  .cat-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+  .cat-count {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 11px; color: var(--ink-faint);
+  }
+  .cat-hue {
+    width: 100%; height: 16px; margin: 0; padding: 0; cursor: pointer;
+    accent-color: var(--hue); background: none;
+  }
+
+  .photo-drop {
+    margin-top: 10px; border: 1px solid var(--line-soft); border-radius: 6px;
+    background: var(--surface); overflow: hidden;
+  }
+  .photo-drop > summary {
+    list-style: none; cursor: pointer; padding: 10px 12px;
+    font-size: 13.5px; color: var(--ink-soft);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .photo-drop > summary::-webkit-details-marker { display: none; }
+  .photo-drop > summary:hover { color: var(--ink); }
+  .photo-ico { display: inline-block; transition: transform 140ms ease; color: var(--hue); }
+  .photo-drop[open] .photo-ico { transform: rotate(90deg); }
+  .photo-holder { padding: 0 12px 12px; }
+  .photo-holder img { width: 100%; height: auto; border-radius: 4px; display: block; }
+
+  .photo-edit-list { display: flex; flex-direction: column; gap: 8px; }
+  .photo-edit-row { display: flex; align-items: center; gap: 10px; }
+  .photo-thumb {
+    flex: none; width: 52px; height: 52px; border-radius: 5px; overflow: hidden;
+    background: var(--surface-2); display: grid; place-items: center;
+  }
+  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+  .link-edit-list { display: flex; flex-direction: column; gap: 8px; }
+  .link-edit-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .link-edit-row input:first-child { flex: 1 1 130px; }
+  .link-edit-row input:nth-child(2) { flex: 2 1 200px; }
+
+  .link-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; }
+  .link-list a { color: var(--hue); font-size: 14px; }
+
+  .daypick { display: flex; gap: 5px; margin-top: 8px; flex-wrap: wrap; }
+  .daybtn {
+    width: 34px; height: 32px; border-radius: 5px;
+    border: 1px solid var(--line); background: var(--surface);
+    color: var(--ink-faint); cursor: pointer;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 12px;
+  }
+  .daybtn[aria-pressed="true"] { background: var(--hue); border-color: var(--hue); color: #fff; }
+  .daybtn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .sheet-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .sheet-row > * { flex: 1 1 140px; }
+
+  input[type="text"], select, textarea {
+    font-family: inherit; font-size: 14px; color: var(--ink);
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 5px; padding: 8px 10px; min-width: 0; width: 100%;
+  }
+  textarea { min-height: 150px; resize: vertical; line-height: 1.55; }
+  input:focus, select:focus, textarea:focus {
+    outline: 2px solid var(--focus); outline-offset: -1px; border-color: transparent;
+  }
+
+  .sheet-core { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-soft); }
+  .sheet-core input { width: 16px; height: 16px; accent-color: var(--focus); flex: none; }
+
+  .sheet-stats {
+    display: flex; gap: 22px; flex-wrap: wrap;
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-soft);
+  }
+  .sheet-stat .eyebrow { font-size: 10px; }
+  .sheet-stat b {
+    display: block; margin-top: 2px; font-size: 17px; font-weight: 500;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+
+  .sheet-actions { display: flex; gap: 8px; margin-top: 22px; flex-wrap: wrap; }
+
+  /* week sheet */
+  .wk-grid { margin-top: 16px; overflow-x: auto; }
+  .wk-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  .wk-table th, .wk-table td { padding: 5px 4px; text-align: center; }
+  .wk-table th.name, .wk-table td.name {
+    text-align: left; font-weight: 400; color: var(--ink-soft);
+    white-space: nowrap; padding-right: 12px; max-width: 230px;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .wk-table thead th {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint);
+    font-weight: 500; cursor: pointer;
+  }
+  .wk-table thead th:hover { color: var(--ink); }
+  .wk-table thead th.td-today { color: var(--ink); }
+  .wk-cell { width: 20px; height: 20px; border-radius: 3px; background: var(--empty); display: inline-block; }
+  .wk-cell.on { background: var(--hue); }
+  .wk-cell.void { background: none; box-shadow: inset 0 0 0 1px var(--line-soft); }
+  .wk-table td.tally, .wk-table tfoot td {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 11.5px; color: var(--ink-faint);
+  }
+  .wk-table td.tally.met { color: var(--ok); }
+  .wk-table tfoot td { border-top: 1px solid var(--line-soft); padding-top: 8px; }
+
+  .foot {
+    margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
+    font-size: 12.5px; color: var(--ink-faint);
+    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  #save-state { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 11.5px; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (max-width: 470px) { .row-detail { display: none; } }
+
+  /* sub-areas */
+  .row-hint {
+    display: block; font-size: 12px; margin-top: 2px;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    letter-spacing: 0.01em; color: var(--hue); opacity: 0.95;
+    overflow-wrap: break-word;
+  }
+  .row[aria-pressed="true"] .row-hint { color: var(--ink-faint); }
+  .part-list { display: grid; gap: 6px; margin-top: 10px; }
+  .part-row {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 9px 11px; border-radius: 7px; text-align: left;
+    border: 1px solid var(--line-soft); background: transparent;
+    color: inherit; font: inherit; cursor: pointer;
+  }
+  .part-row:hover { border-color: var(--hue); }
+  .part-row.on { background: color-mix(in oklab, var(--hue) 13%, transparent); border-color: var(--hue); }
+  .part-box {
+    flex: none; width: 15px; height: 15px; border-radius: 3px;
+    border: 1.5px solid var(--line); background: transparent;
+  }
+  .part-row.on .part-box { background: var(--hue); border-color: var(--hue); }
+  .part-name { flex: 1 1 auto; }
+  .part-row.on .part-name { color: var(--ink-soft); }
+  .part-age {
+    flex: none; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 11px; color: var(--ink-faint);
+  }
+  .part-sug {
+    flex: none; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 3px; color: var(--hue);
+    background: color-mix(in oklab, var(--hue) 15%, transparent);
+  }
+  .part-note { font-size: 12.5px; color: var(--ink-faint); margin-top: 8px; }
+  .photo-group-label {
+    margin-top: 16px; margin-bottom: 2px;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--hue);
+  }
+
+  /* breakdown sheet */
+  .bd-part { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+  .bd-part:first-of-type { border-top: 0; }
+  .bd-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .bd-head b { font-size: 15px; font-weight: 600; }
+  .bd-head .bd-gap {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: 11.5px; color: var(--ink-faint);
+  }
+  .bd-strip { display: flex; flex-wrap: wrap; gap: 1px; margin-top: 8px; }
+  .bd-strip i {
+    width: 5px; height: 5px; border-radius: 1px; background: var(--empty);
+  }
+  .bd-strip i.on { background: var(--hue); }
+  .bd-strip i.void { opacity: 0.35; }
+  .bd-mgap { width: 4px; height: 5px; background: transparent !important; }
+  .bd-nums {
+    display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 11.5px;
+    color: var(--ink-faint);
+  }
+  .bd-nums b { color: var(--ink); font-weight: 500; }
+  .bd-bar { height: 4px; border-radius: 2px; background: var(--empty); margin-top: 8px; overflow: hidden; }
+  .bd-bar span { display: block; height: 100%; background: var(--hue); }
+  .bd-lead {
+    font-size: 13px; color: var(--ink-soft);
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-soft);
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="head">
+    <div>
+      <div class="eyebrow">Daily practice</div>
+      <h1 class="head-date" id="date-line">—</h1>
+      <div class="status">
+        <span class="status-core" id="status-core"></span>
+        <span class="status-count" id="status-count"></span>
+      </div>
+      <p class="status-next" id="status-next"></p>
+      <div class="date-nav">
+        <button type="button" class="icon-btn" id="day-prev" aria-label="Previous day" title="Previous day">‹</button>
+        <button type="button" class="icon-btn" id="day-next" aria-label="Next day" title="Next day">›</button>
+        <button type="button" class="btn" id="day-today" hidden>Back to today</button>
+        <span class="date-rel" id="date-rel"></span>
+      </div>
+    </div>
+    <div class="today-col-wrap">
+      <span class="today-col-label" id="col-label">Today</span>
+      <div class="today-col" id="today-col"></div>
+    </div>
+  </header>
+
+  <div class="arc" id="arc"></div>
+
+  <div class="list-head">
+    <span class="eyebrow">The list</span>
+    <button type="button" class="btn" id="edit-toggle" aria-pressed="false">Edit list</button>
+  </div>
+
+  <p class="edit-note" id="edit-note" hidden>
+    Drag by the coloured handle to reorder, including from one part of the day into another.
+    Tap a name to open its full detail — category, cadence, protocol, everything. A habit you've never
+    ticked is deleted outright; one with days on the record is retired instead.
+  </p>
+
+  <main class="groups" id="groups"></main>
+
+  <section class="stats" id="stats"></section>
+
+  <section class="grid-section">
+    <div class="eyebrow">The year, one column per day</div>
+    <div class="legend" id="legend"></div>
+    <p class="grid-hint" id="grid-hint"></p>
+    <div class="months" id="months"></div>
+  </section>
+
+  <footer class="foot">
+    <span id="core-line"></span>
+    <span id="save-state"></span>
+  </footer>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+  .auth-scrim { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px;
+    background: var(--bg); }
+  .auth-card { width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 22px; }
+  .auth-card h2 { margin: 6px 0 14px; font-size: 20px; font-weight: 600; }
+  .auth-card input { margin-top: 8px; }
+  .auth-card .btn { width: 100%; margin-top: 14px; padding: 10px; }
+  .auth-msg { min-height: 1.4em; margin-top: 10px; font-size: 13px; color: var(--ink-faint); }
+</style>
+<script>
+/* Habit Tracker storage: your own Supabase project (only your account can
+   read or write it). Gives the page the same small document store it had
+   as a Claude artifact, so the rest of the page is unchanged. */
+var HabitCloud = (function () {
+  "use strict";
+  var URL_ = "https://xrasggsdzoqgcwfgscit.supabase.co";
+  var KEY = "sb_publishable_Gtf86roiVHDBGRvqp2xsrg_FtwlFCEI";
+  var sb = window.supabase ? window.supabase.createClient(URL_, KEY, {
+    auth: { persistSession: true, autoRefreshToken: true, storageKey: "habit-tracker-auth" }
+  }) : null;
+
+  function makeDb(uid) {
+    var listeners = {};
+    function snap(row) { return { exists: !!row, data: function () { return row ? row.data : undefined; } }; }
+    function fail(r) { if (r.error) throw r.error; return r; }
+    sb.channel("docs-" + uid)
+      .on("postgres_changes", { event: "*", schema: "public", table: "docs", filter: "user_id=eq." + uid }, function (p) {
+        var gone = p.eventType === "DELETE";
+        var path = (p.new && p.new.path) || (p.old && p.old.path);
+        (listeners[path] || []).forEach(function (cb) { cb(snap(gone ? null : p.new)); });
+      })
+      .subscribe();
+    return {
+      doc: function (path) {
+        var ref = {
+          set: function (obj) {
+            return sb.from("docs").upsert({ user_id: uid, path: path, data: obj }, { onConflict: "user_id,path" }).then(fail);
+          },
+          get: function () {
+            return sb.from("docs").select("data").eq("path", path).maybeSingle().then(function (r) { fail(r); return snap(r.data); });
+          },
+          "delete": function () { return sb.from("docs").delete().eq("path", path).then(fail); },
+          onSnapshot: function (cb, err) {
+            (listeners[path] = listeners[path] || []).push(cb);
+            ref.get().then(cb, err || function () {});
+            return function () { listeners[path] = (listeners[path] || []).filter(function (f) { return f !== cb; }); };
+          }
+        };
+        return ref;
+      }
+    };
+  }
+
+  function askToSignIn() {
+    return new Promise(function (resolve) {
+      var wrap = document.createElement("div");
+      wrap.className = "auth-scrim";
+      wrap.innerHTML = '<form class="auth-card"><div class="eyebrow">Habit Tracker</div><h2>Sign in</h2>' +
+        '<input type="email" id="auth-email" autocomplete="username" placeholder="Email" required>' +
+        '<input type="password" id="auth-pass" autocomplete="current-password" placeholder="Password" required>' +
+        '<button class="btn" type="submit">Sign in</button><div class="auth-msg" id="auth-msg"></div></form>';
+      document.body.appendChild(wrap);
+      wrap.querySelector("form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        var msg = wrap.querySelector("#auth-msg");
+        msg.textContent = "Signing in…";
+        sb.auth.signInWithPassword({ email: wrap.querySelector("#auth-email").value.trim(),
+                                     password: wrap.querySelector("#auth-pass").value })
+          .then(function (r) {
+            if (r.error) { msg.textContent = "That didn't work: " + r.error.message; return; }
+            wrap.remove();
+            resolve(r.data.session);
+          });
+      });
+    });
+  }
+
+  function connect() {
+    if (!sb) return null;   // offline / script blocked: the page still works on this device
+    return sb.auth.getSession().then(function (r) {
+      var session = r.data && r.data.session;
+      return session || askToSignIn();
+    }).then(function (session) { return makeDb(session.user.id); });
+  }
+
+  return { connect: connect, client: sb };
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- categories: hue carries meaning, shade separates items ---------- */
+
+  // hues spread right round the wheel — greens, cyans, blues, purples, pinks, oranges.
+  // These are only the starting set; categories are yours to add, rename, recolour and remove.
+  var DEFAULT_CATEGORIES = [
+    { id: "movement", label: "Movement & mobility", hue: 145 },
+    { id: "mind",     label: "Coordination & mind", hue: 200 },
+    { id: "airway",   label: "Jaw & airway",        hue: 255 },
+    { id: "speech",   label: "Speech",              hue: 300 },
+    { id: "massage",  label: "Massage & release",   hue: 350 },
+    { id: "eyes",     label: "Eyes & face care",    hue: 40 },
+    { id: "meds",     label: "Meds & supplements",  hue: 95 }
+  ];
+
+  var categories = [];
+  var cfgVersion = 0;
+
+  var GROUPS = [
+    { id: "morning", label: "Morning" },
+    { id: "midday",  label: "Midday" },
+    { id: "anytime", label: "Anytime" },
+    { id: "evening", label: "Evening" }
+  ];
+
+  function yt(q) { return "https://www.youtube.com/results?search_query=" + encodeURIComponent(q); }
+
+  var RULES = "\n\nBefore any release work:\n\u2013 Warm the area first \u2014 heat pack, 5\u201310 min.\n\u2013 Jaw slightly open, teeth apart, tongue on the palate, slow nasal breathing.\n\u2013 1\u20132 min per muscle. Pressure no higher than 3\u20134 out of 10. Hold a tender spot 30\u201360s until it eases.\n\u2013 Work both sides; extra time where it\u2019s tender \u2014 for you, likely the right masseter, temporalis and medial pterygoid.\n\u2013 Stop at numbness, tingling, dizziness or sharp joint pain. Learn anything inside the mouth from your physio first, clean hands, short nails.";
+
+  var DEFAULT_HABITS = [
+    { id: "meds", name: "Take meds & supplements", detail: "With breakfast",
+      category: "meds", group: "morning", core: true, target: 0, days: [], mins: "",
+      when: "With breakfast, every day without exception.",
+      notes: "The list:\n\u2013\n\u2013\n\u2013\n\nKeep them somewhere you physically cannot miss on the way to the kettle. The failure mode is never deciding not to \u2014 it\u2019s walking past them." },
+
+    { id: "warm", name: "Warm up the body", detail: "Joint circles, neck through to ankles",
+      category: "movement", group: "morning", core: true, target: 0, days: [], mins: "8 min",
+      when: "First thing, before anything else gets a chance to interrupt.",
+      notes: "Joint circles, top to bottom \u2014 10 each direction:\nneck \u00b7 shoulders \u00b7 elbows \u00b7 wrists \u00b7 spine rotations \u00b7 hips \u00b7 knees \u00b7 ankles\n\nThen 2 minutes of something that raises your heart rate a little.\n\nThe point is temperature and lubrication, not a workout. If you\u2019re rushed, do the spine and hips and go." },
+
+    { id: "jawam", name: "Jaw release on waking", detail: "Masseter & temporalis, both sides \u2014 only if tight",
+      category: "massage", group: "morning", core: false, target: 0, days: [], links: [{ label: "Video: temporalis self massage", url: yt("temporalis self massage TMJ") }, { label: "Video: masseter self massage", url: yt("masseter self massage TMJ") }], mins: "2 min",
+      when: "On waking, and only if the jaw is tight. Waking with a tight jaw means you clenched overnight \u2014 if it feels fine, skip it. That\u2019s the signal, not the schedule.",
+      notes: "Masseter: circles and downward strokes, both sides.\nTemporalis: circles across the whole fan, both sides \u2014 temple, side of the head, above and behind the ear.\n\nThe back fibres of the temporalis are the ones that pull the jaw back and load the joint, so give them the extra time." + RULES },
+
+    { id: "coord", name: "Train difficult coordination", detail: "Cross-crawl \u00b7 juggling \u00b7 balance \u00b7 non-dominant hand",
+      category: "mind", group: "morning", core: false, target: 0, days: [], mins: "10 min",
+      when: "Morning, while you\u2019re fresh \u2014 this one degrades badly when you\u2019re tired.",
+      notes: "Rotate. Don\u2019t keep doing one until it\u2019s easy; that defeats the purpose.\n\n\u2013 Contralateral patterns (opposite hand/foot taps, cross-crawl)\n\u2013 Juggling, or two-ball wall bounces\n\u2013 Single-leg balance, eyes closed, then add head turns\n\u2013 Non-dominant hand work \u2014 writing, brushing, throwing\n\u2013 Rhythm dissociation \u2014 a different tempo in each hand\n\nThe useful zone is where you\u2019re failing about a third of the time. Comfortable means move on." },
+
+    { id: "posture", name: "Habit check \u2014 tongue up", detail: "Lips together, teeth apart, tongue on the palate",
+      category: "airway", group: "anytime", core: false, target: 0, days: [], mins: "seconds",
+      when: "All day, as often as you remember. Tie it to something frequent \u2014 unlocking your phone, opening a door, a new lecture slide.",
+      notes: "Check: lips together, teeth apart, tongue up.\n\nIf the tongue has dropped, say \u201cng\u201d to find the back of it, then rest it up there.\n\nThe front of the tongue goes up by itself. The back third is the part that drops, and the back third is what holds the tongue up and the airway open.\n\nTick this if you actually caught yourself and corrected it through the day." },
+
+    { id: "hinge", name: "6\u00d76 hinge opening", detail: "6 openings, 6 times a day",
+      category: "airway", group: "anytime", core: false, target: 0, days: [], links: [{ label: "Video: 6\u00d76 hinge opening (Rocabado)", url: yt("Rocabado 6x6 TMJ exercise tongue up opening") }], mins: "6 \u00d7 30s",
+      when: "Six times a day, 30 seconds each. Spread them out, and do one more set to close the evening block.",
+      notes: "Tongue on the palate. Open slowly only as far as the tongue stays up, in a straight line in a mirror, then close.\n\n6 openings, 6 times a day.\n\nThis rests the lateral pterygoid and the disc \u2014 the muscle you can\u2019t reach from outside and shouldn\u2019t be digging at anyway." },
+
+    { id: "tongueset", name: "Tongue posture set", detail: "ng reset \u00b7 suction hold \u00b7 sealed swallows",
+      category: "airway", group: "midday", core: false, target: 0, days: [], mins: "6 min",
+      when: "2\u20133 times a day, while you\u2019re alert \u2014 these need focus. Morning, after lunch and early evening work well.",
+      notes: "\u2013 ng reset \u2014 say \u201cng\u201d to find the back of the tongue\n\u2013 Suction hold\n\u2013 Sealed swallows\n\nTongue tie, adenoids and nasal blockage are already ruled out for you, so what\u2019s left is endurance and room. The training effect carries into sleep, which is the whole point of doing them awake.\n\nIf the tongue still won\u2019t fit up, ask your orthodontist whether your upper arch is narrow." },
+
+    { id: "snoreset", name: "Airway & snoring set", detail: "Slide \u00b7 press \u00b7 back of tongue down \u00b7 soft palate \u00b7 cheek",
+      category: "airway", group: "midday", core: false, target: 0, days: [], mins: "6 min",
+      when: "2\u20133 times a day, paired with the tongue posture set.",
+      notes: "\u2013 Slide\n\u2013 Press\n\u2013 Back of tongue down\n\u2013 Soft palate\n\u2013 Cheek\n\nThese train the genioglossus (which holds the tongue forward) and the soft palate muscles \u2014 the ones that go slack in sleep. Trials in adults show less snoring after about 3 months of daily practice, so judge it on months, not days." },
+
+    { id: "speech", name: "Practise pronunciation", detail: "Minimal pairs \u00b7 shadowing \u00b7 reading aloud",
+      category: "speech", group: "midday", core: false, target: 0, days: [], mins: "10 min",
+      when: "Midday, somewhere you can speak out loud without an audience.",
+      notes: "Target sounds:\n\nMethod: record yourself, listen back, compare to a model. The recording is the whole trick \u2014 you cannot hear yourself accurately in real time.\n\nRotate:\n\u2013 Minimal pairs on your problem sounds\n\u2013 Shadowing \u2014 speak along with audio, half a second behind\n\u2013 Read aloud for 5 minutes, slowly, exaggerating\n\u2013 Patter drill: \u201cThe Elements\u201d by Tom Lehrer \u2014 the one Daniel Radcliffe performs. It\u2019s a list of the chemical elements sung at speed, which makes it a brutal articulation and breath-control exercise. Start at half tempo and only speed up once nothing slurs." },
+
+    { id: "eyes", name: "Rest and reset the eyes", detail: "Distance gazing \u00b7 20-20-20",
+      category: "eyes", group: "midday", core: false, target: 0, days: [], mins: "5 min",
+      when: "Midday, or whenever the screen starts to feel like work.",
+      notes: "\u2013 Distance gazing: 2 minutes on the furthest thing you can see. Focus is a muscle and it spends all day locked at 50cm.\n\u2013 20-20-20 through the rest of the day: every 20 minutes, 20 seconds, 20 feet away.\n\u2013 Blink deliberately \u2014 screen work roughly halves your blink rate, which is most of why eyes feel gritty by evening." },
+
+    { id: "heat", name: "Heat pack on jaw & temples", detail: "Opens the evening release block",
+      category: "massage", group: "evening", core: false, target: 0, days: [], mins: "5\u201310 min",
+      when: "30\u201360 minutes before bed, before any release work.",
+      notes: "Warm heat pack or cloth over the jaw and temples, 5\u201310 minutes.\n\nThis isn\u2019t optional padding \u2014 warm tissue releases and cold tissue fights back. It\u2019s the difference between the evening block working and just hurting." },
+
+    { id: "jaw", name: "Evening jaw release", detail: "Temporalis \u00b7 masseter \u00b7 medial pterygoid",
+      category: "massage", group: "evening", core: true, target: 0, days: [], links: [{ label: "Video: temporalis self massage", url: yt("temporalis self massage TMJ") }, { label: "Video: masseter self massage", url: yt("masseter self massage TMJ") }, { label: "Video: medial pterygoid release", url: yt("medial pterygoid release intraoral TMJ") }], mins: "6 min",
+      when: "After the heat pack, 30\u201360 min before bed. This is the one that matters most \u2014 if you clench at night, the evening session is when it counts.",
+      notes: "Both sides, every time. Extra time on tender spots.\n\nTEMPORALIS \u2014 small slow circles across the whole fan: temple, side of head, above the ear. Extra time above and behind the ear; those back fibres pull the jaw back. Finish with slow strokes down toward the cheekbone. Avoid pressing hard on the pulse just in front of the ear.\n\nMASSETER \u2014 jaw hanging a little open. Two or three fingertips, slow circles over the bulk of the cheek block. Slow downward strokes from cheekbone to angle. Deep head: just in front of the ear, below the cheekbone, light pressure \u2014 it sits over the joint.\n\nMEDIAL PTERYGOID \u2014 tuck a fingertip under the angle of the jaw, on the inner side of the bone. Press gently up and in, swallow once to let it relax, hold 30\u201360s. Inside the mouth only once your physio has shown you.\n\nFinish with one 6\u00d76 hinge set." + RULES + "\n\nEvening release eases pain and tension. It won\u2019t fully stop grinding in sleep, which is driven by the brain \u2014 so keep wearing the retainers." },
+
+    { id: "hyoid", name: "Under-chin & strap muscles", detail: "Digastric \u00b7 mylohyoid \u00b7 geniohyoid \u00b7 infrahyoids",
+      category: "massage", group: "evening", core: false, target: 0, days: [], links: [{ label: "Video: suprahyoid release under the chin", url: yt("suprahyoid muscle release under chin self massage") }], mins: "4 min",
+      when: "Evening, straight after the jaw release \u2014 the atlas puts these in the same block.",
+      notes: "Head tilted slightly down to slacken the skin.\n\nANTERIOR DIGASTRIC \u2014 under the chin, a finger\u2019s width either side of the midline. Slow strokes from just behind the chin back toward the hyoid. Light pressure; it\u2019s a thin muscle.\n\nMYLOHYOID \u2014 the floor of the mouth, between the two halves of the jaw. Gentle circles.\n\nGENIOHYOID & INFRAHYOIDS \u2014 the strap muscles running down the front of the throat. Very light; they anchor the hyoid so the openers can work.\n\nStay on the soft area under the chin. Don\u2019t press on the hyoid bone itself, and don\u2019t press into soft lumps \u2014 muscle against bone only." + RULES },
+
+    { id: "neck", name: "Neck release", detail: "Upper traps \u00b7 levator scapulae \u00b7 SCM \u00b7 suboccipitals",
+      category: "massage", group: "evening", core: false, target: 0, days: [], links: [{ label: "Video: suboccipital release with tennis balls", url: yt("suboccipital release tennis balls neck") }, { label: "Video: levator scapulae release", url: yt("levator scapulae self release") }], mins: "5 min",
+      when: "Evening, between the jaw work and the scalp \u2014 the suboccipitals run straight into both.",
+      notes: "UPPER TRAPS \u2014 the slope between neck and shoulder. Squeeze and roll between thumb and fingers, 30\u201360s each side.\n\nLEVATOR SCAPULAE \u2014 from the top inner corner of the shoulder blade up to the neck. Tilt the head away and down to put it on stretch, then work the top of the shoulder blade.\n\nSCM \u2014 the rope from behind the ear down to the collarbone. Turn the head away to make it stand out, pinch it gently between finger and thumb and work down its length. Light pressure, and stay off the pulse.\n\nSUBOCCIPITALS \u2014 lie on your back with two tennis balls at the base of the skull, 60\u201390 seconds. Usually the highest-yield minute of the whole routine.\n\nFinish with chin tucks \u2014 10 slow, holding 3 seconds.\n\nGentle throughout. The neck responds badly to force." },
+
+    { id: "scalp", name: "Scalp & skull-base release", detail: "Occipital ridge \u00b7 temples \u00b7 crown \u00b7 hairline",
+      category: "massage", group: "evening", core: false, target: 0, days: [], links: [{ label: "Video: scalp and galea release", url: yt("scalp massage galea aponeurotica release") }], mins: "4\u20135 min",
+      when: "Evening, after the neck work.",
+      notes: "The scalp has one main muscle, the occipitofrontalis: a forehead belly and a back-of-head belly joined across the top by a flat tendon sheet, the galea aponeurotica. The top of the head is that tendon sheet, which is why it feels tight rather than muscly.\n\nFingertips, never nails. The move is to shift the scalp over the skull rather than slide across the hair \u2014 if the hair is moving and the scalp isn\u2019t, nothing is happening.\n\nWork through:\n\u2013 Occipital ridge, the base of the skull\n\u2013 Temples\n\u2013 Crown\n\u2013 Along the hairline\n\nOn hair: massage raises blood flow in the scalp while you do it. The evidence that it grows hair is weak \u2014 one small study found thicker hair after 24 weeks of 4 minutes a day. Do it for the tension, not the hair." },
+
+    { id: "eyewash", name: "Eye wash & warm compress", detail: "Warm water and a face cloth",
+      category: "eyes", group: "evening", core: false, target: 0, days: [], mins: "3 min",
+      when: "Evening, before the Bruder mask \u2014 clean first, then heat.",
+      notes: "Warm water and a clean face cloth.\n\n\u2013 Soak the cloth in comfortably warm water, wring it out.\n\u2013 Hold it over closed lids for a minute to soften everything.\n\u2013 Wipe along the lash line, top and bottom, eyes closed. A fresh corner of the cloth for each eye.\n\nThis clears the oil and debris off the lid margins so the glands behind them can actually drain when you put the mask on." },
+
+    { id: "bruder", name: "Bruder mask", detail: "10 minutes over closed eyes",
+      category: "eyes", group: "evening", core: false, target: 0, days: [], mins: "10 min",
+      when: "Evening, after the eye wash. It\u2019s a good one to stack with reading or the wind-down.",
+      notes: "Microwave per the instructions on the mask \u2014 overheating it is the one way to get this wrong.\n\n10 minutes over closed eyes.\n\nThe heat melts the oil in the meibomian glands along the lid margins so it can flow instead of clogging. That oil layer is what stops your tear film evaporating, which is why dry, gritty eyes at night respond to heat better than to drops.\n\nEasiest to do lying down with the lights off \u2014 and it pairs neatly with the jaw heat pack if you want one warm block." },
+
+    { id: "legs", name: "Stretch & massage the legs", detail: "Hamstrings \u00b7 hip flexors \u00b7 quads \u00b7 calves \u00b7 glutes",
+      category: "movement", group: "evening", core: false, target: 0, days: [], mins: "10 min",
+      when: "Evening, when the day\u2019s sitting has accumulated.",
+      notes: "Hamstrings \u00b7 hip flexors \u00b7 quads \u00b7 adductors \u00b7 calves \u00b7 glutes\n\nHold 45\u201360 seconds each, breathe out into the stretch, don\u2019t bounce.\n\nHip flexors and hamstrings are where the day\u2019s sitting ends up. If you only do two, do those." },
+
+    { id: "upper", name: "Stretch & massage the upper body", detail: "Pecs \u00b7 lats \u00b7 thoracic \u00b7 shoulders \u00b7 forearms",
+      category: "movement", group: "evening", core: false, target: 0, days: [], mins: "8 min",
+      when: "Evening, straight after the legs.",
+      notes: "Chest/pecs \u00b7 lats \u00b7 thoracic extension \u00b7 shoulders \u00b7 forearms and wrists\n\nA doorway pec stretch and a thoracic opener over a rolled towel undo most of a day at a desk.\n\nThe thoracic work matters more than it looks: a stiff upper back pushes the head forward, and a forward head is what keeps the upper traps and suboccipitals loaded all day." },
+
+    { id: "read", name: "Read a book", detail: "15\u201330 minutes, paper not screen",
+      category: "mind", group: "evening", core: false, target: 0, days: [], mins: "15\u201330 min",
+      when: "Last thing, in bed. Pairs well with the Bruder mask if you do the mask first.",
+      notes: "15\u201330 minutes. Paper, or at least not a backlit screen.\n\nThis is doing two jobs: it\u2019s the thing you want to be doing anyway, and it\u2019s the wind-down that makes the rest of the bedtime routine stick. A routine with no pleasant last step is a routine you start skipping." },
+
+    { id: "bedtime", name: "Bedtime set-up", detail: "Retainers \u00b7 side sleeping \u00b7 nasal rinse",
+      category: "airway", group: "evening", core: true, target: 0, days: [], mins: "",
+      when: "Last thing. No alcohol or sedatives in the 3 hours before.",
+      notes: "\u2013 Retainers in.\n\u2013 Saline nasal rinse if your throat is mucusy. If you keep clearing your throat, ask your GP about rhinitis and laryngopharyngeal reflux \u2014 both cause it.\n\u2013 Fall asleep on your side. The tongue falls back most when you lie on your back.\n\u2013 No alcohol or sedatives in the 3 hours before bed.\n\nWorth asking about: whether a dentist-fitted mandibular advancement device can work alongside your retainers, and whether one home sleep test is worth doing to tell plain snoring from mild apnea. A test result doesn\u2019t mean CPAP." }
+  ];
+
+  var LEGACY_ORDER = ["meds", "warm", "coord", "speech", "legs", "upper", "head"];
+
+  var LOG_KEY  = "seven-squares-log-v1";
+  var PARTS_KEY = "seven-squares-parts-v1";
+  var CFG_KEY  = "seven-squares-habits-v1";
+  var CFG_VERSION = 3;   // bump to roll new default habits into an existing list, once
+  var LOG_PATH = "log/entries";
+  var CFG_PATH = "config/habits";
+
+  var MONTHS = ["January","February","March","April","May","June",
+                "July","August","September","October","November","December"];
+  var MON_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var DAYS_LONG = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  var DAY_INIT = ["M","T","W","T","F","S","S"];
+
+  var habits = [], days = {}, parts = {}, db = null;
+  var editing = false, logTimer = null, cfgTimer = null;
+  var cells = {}, dayCols = {}, weekEls = {};
+  var todayKey = "", viewKey = "";
+  var renderedYear = null, renderedGroup = null;
+  var drag = null;
+
+  /* ---------- helpers ---------- */
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function catOf(id) {
+    for (var i = 0; i < categories.length; i++) if (categories[i].id === id) return categories[i];
+    return categories[0] || { id: "", label: "Uncategorised", hue: 0 };
+  }
+  function catRank(id) {
+    for (var i = 0; i < categories.length; i++) if (categories[i].id === id) return i;
+    return categories.length;
+  }
+  function groupRank(id) {
+    for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i].id === id) return i;
+    return GROUPS.length;
+  }
+  // morning until noon, midday until six, evening after that
+  function currentGroup() {
+    var hr = new Date().getHours();
+    if (hr < 12) return "morning";
+    if (hr < 18) return "midday";
+    return "evening";
+  }
+
+  // where to look for the next thing: the part of day you're in, then anytime,
+  // then what's still ahead, and only then what you've left behind
+  function lookOrder() {
+    var now = currentGroup();
+    var ids = GROUPS.map(function (g) { return g.id; }).filter(function (g) { return g !== "anytime"; });
+    var at = ids.indexOf(now);
+    return [now, "anytime"].concat(ids.slice(at + 1), ids.slice(0, at));
+  }
+
+  function groupLabel(id) {
+    for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i].id === id) return GROUPS[i].label;
+    return "Anytime";
+  }
+
+  // hue says which family, lightness says which member of it
+  function colorOf(h) {
+    var cat = catOf(h.category);
+    var sibs = habits.filter(function (x) { return x.category === h.category; });
+    var j = sibs.indexOf(h), n = sibs.length;
+    var off = (n <= 1) ? 0 : ((j / (n - 1)) - 0.5) * 0.17;
+    var sign = off < 0 ? "- " + Math.abs(off).toFixed(3) : "+ " + off.toFixed(3);
+    return "oklch(calc(var(--lum) " + sign + ") var(--chroma) " + cat.hue + ")";
+  }
+
+  function activeHabits() { return habits.filter(function (h) { return !h.retired; }); }
+  function habitById(id) {
+    for (var i = 0; i < habits.length; i++) if (habits[i].id === id) return habits[i];
+    return null;
+  }
+  function hasHistory(id) {
+    for (var k in days) {
+      if (Object.prototype.hasOwnProperty.call(days, k) && days[k].indexOf(id) !== -1) return true;
+    }
+    return false;
+  }
+
+  // checklist order: the day in order, core pinned to the top of its own section
+  function checklistOrder() {
+    var out = [];
+    GROUPS.forEach(function (g) { out = out.concat(groupItems(g.id)); });
+    return out;
+  }
+  // what a habit asks of a particular day
+  //   "required" — daily, or a custom day that lands today
+  //   "flexible" — an N-times-a-week habit; no single day is mandatory
+  //   "off"      — a custom day that doesn't land today; still tickable, just not asked for
+  function dueState(h, key) {
+    if (h.target === -1) {
+      return (h.days || []).indexOf(dateOf(key).getDay()) !== -1 ? "required" : "off";
+    }
+    if (h.target > 0) return "flexible";
+    return "required";
+  }
+
+  // daily and custom habits streak in days; weekly ones streak in weeks
+  function streakOf(h) {
+    if (h.target > 0) {
+      var mon = mondayOf(todayKey), n = 0;
+      if (weekCount(mon, h.id) >= h.target) n++;
+      for (var w = 1; w < 400; w++) {
+        if (weekCount(shiftDay(mon, -7 * w), h.id) >= h.target) n++; else break;
+      }
+      return { n: n, unit: n === 1 ? "week" : "weeks" };
+    }
+    var k = todayKey, count = 0, guard = 0;
+    if (!isOn(k, h.id)) k = shiftDay(k, -1);   // today still has time to happen
+    while (guard++ < 1200) {
+      if (dueState(h, k) === "off") { k = shiftDay(k, -1); continue; }
+      if (!isOn(k, h.id)) break;
+      count++;
+      k = shiftDay(k, -1);
+    }
+    return { n: count, unit: count === 1 ? "day" : "days" };
+  }
+
+  function cadenceLabel(h) {
+    if (h.target === -1) {
+      var names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      return (h.days || []).slice().sort().map(function (d) { return names[d]; }).join(" · ") || "No days set";
+    }
+    if (h.target > 0) return h.target + "× a week";
+    return "Every day";
+  }
+
+  // core first inside its own part of the day, never lifted out of it
+  function groupItems(groupId) {
+    var mine = activeHabits().filter(function (h) { return h.group === groupId; });
+    return mine.filter(function (h) { return h.core; })
+         .concat(mine.filter(function (h) { return !h.core; }));
+  }
+
+  // grid order: by category, so each family reads as one band
+  function gridOrder() {
+    return habits.slice().sort(function (a, b) {
+      var c = catRank(a.category) - catRank(b.category);
+      if (c !== 0) return c;
+      return habits.indexOf(a) - habits.indexOf(b);
+    });
+  }
+
+  function sortHabits() {
+    habits = habits.map(function (h, i) { return { h: h, i: i }; })
+      .sort(function (a, b) {
+        var r = (a.h.retired ? 1 : 0) - (b.h.retired ? 1 : 0);
+        if (r !== 0) return r;
+        var d = groupRank(a.h.group) - groupRank(b.h.group);
+        return d !== 0 ? d : a.i - b.i;
+      })
+      .map(function (x) { return x.h; });
+  }
+
+  /* ---------- dates ---------- */
+
+  function keyOf(d) {
+    var m = d.getMonth() + 1, day = d.getDate();
+    return d.getFullYear() + "-" + (m < 10 ? "0" + m : m) + "-" + (day < 10 ? "0" + day : day);
+  }
+  function dateOf(key) {
+    var p = key.split("-");
+    return new Date(+p[0], +p[1] - 1, +p[2], 12);
+  }
+  function shiftDay(key, delta) {
+    var d = dateOf(key);
+    d.setDate(d.getDate() + delta);
+    return keyOf(d);
+  }
+  function dayDistance(key) {
+    return Math.round((dateOf(key) - dateOf(todayKey)) / 86400000);
+  }
+  function mondayOf(key) {
+    var d = dateOf(key);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return keyOf(d);
+  }
+  function weekDays(mondayKey) {
+    var out = [];
+    for (var i = 0; i < 7; i++) out.push(shiftDay(mondayKey, i));
+    return out;
+  }
+  function weekLabel(mondayKey) {
+    var a = dateOf(mondayKey), b = dateOf(shiftDay(mondayKey, 6));
+    var left = a.getDate() + (a.getMonth() === b.getMonth() ? "" : " " + MON_SHORT[a.getMonth()]);
+    return left + "–" + b.getDate() + " " + MONTHS[b.getMonth()];
+  }
+
+  /* ---------- log ---------- */
+
+  function doneOn(key) { var v = days[key]; return Array.isArray(v) ? v : []; }
+  function isOn(key, id) { return doneOn(key).indexOf(id) !== -1; }
+
+  function setOn(key, id, on) {
+    var list = doneOn(key).slice(), at = list.indexOf(id);
+    if (on && at === -1) list.push(id);
+    if (!on && at !== -1) list.splice(at, 1);
+    if (list.length) { days[key] = list; } else { delete days[key]; }
+  }
+
+  // what the day actually asks for; custom habits only count on the days they land
+  function requiredOn(key) {
+    return activeHabits().filter(function (h) { return dueState(h, key) === "required"; });
+  }
+  function weeklyActive() { return activeHabits().filter(function (h) { return h.target > 0; }); }
+
+  function scoreOf(key) {
+    var n = 0;
+    requiredOn(key).forEach(function (h) { if (isOn(key, h.id)) n++; });
+    return n;
+  }
+  function weekCount(mondayKey, id) {
+    var n = 0;
+    weekDays(mondayKey).forEach(function (k) { if (isOn(k, id)) n++; });
+    return n;
+  }
+  function coreDone(key) {
+    var ids = activeHabits().filter(function (h) { return h.core && dueState(h, key) !== "off"; });
+    if (!ids.length) return doneOn(key).length > 0;
+    for (var i = 0; i < ids.length; i++) if (!isOn(key, ids[i].id)) return false;
+    return true;
+  }
+
+  /* ---------- sub-areas ---------- */
+
+  // A habit may be split into named areas. The parent ticks once `need` of them
+  // are done, but every area is recorded on its own day either way — so a night
+  // where you only managed one is still real data, it just doesn't fill the square.
+  function partsOf(h) { return (h && h.parts && h.parts.length) ? h.parts : null; }
+  function needOf(h) {
+    var p = partsOf(h);
+    if (!p) return 0;
+    var k = parseInt(h.need, 10);
+    if (!(k >= 1)) k = 1;
+    return Math.min(k, p.length);
+  }
+  function partLabel(h, pid) {
+    var p = partsOf(h) || [];
+    for (var i = 0; i < p.length; i++) if (p[i].id === pid) return p[i].label;
+    return pid;
+  }
+  function partsOn(key, id) {
+    var d = parts[key], v = d && d[id];
+    return Array.isArray(v) ? v : [];
+  }
+  function isPartOn(key, id, pid) { return partsOn(key, id).indexOf(pid) !== -1; }
+
+  function writeParts(key, id, list) {
+    var d = parts[key] || (parts[key] = {});
+    if (list.length) d[id] = list; else delete d[id];
+    var any = false, k;
+    for (k in d) if (Object.prototype.hasOwnProperty.call(d, k)) { any = true; break; }
+    if (!any) delete parts[key];
+  }
+  function setPartOn(key, id, pid, on) {
+    var list = partsOn(key, id).slice(), at = list.indexOf(pid);
+    if (on && at === -1) list.push(pid);
+    if (!on && at !== -1) list.splice(at, 1);
+    writeParts(key, id, list);
+    return list;
+  }
+
+  // 0 nothing, 1 some areas but short of the bar, 2 done
+  function fillOf(key, h) {
+    if (isOn(key, h.id)) return 2;
+    return (partsOf(h) && partsOn(key, h.id).length) ? 1 : 0;
+  }
+
+  function dayGap(key) { return Math.round((dateOf(todayKey) - dateOf(key)) / 86400000); }
+
+  // days since each area was last done; null means never. Walks the sparse log,
+  // not every date, so this stays cheap however long the history gets.
+  function partAges(h) {
+    var p = partsOf(h) || [], out = {}, i, j;
+    for (i = 0; i < p.length; i++) out[p[i].id] = null;
+    var keys = [];
+    for (var k in parts) {
+      if (Object.prototype.hasOwnProperty.call(parts, k) && k <= todayKey) keys.push(k);
+    }
+    keys.sort();
+    for (i = keys.length - 1; i >= 0; i--) {
+      var list = (parts[keys[i]] || {})[h.id] || [];
+      for (j = 0; j < list.length; j++) {
+        if (out[list[j]] === null) out[list[j]] = dayGap(keys[i]);
+      }
+    }
+    return out;
+  }
+
+  // longest unworked first; never-done sorts to the very front
+  function partOrder(h, ages) {
+    var p = partsOf(h) || [];
+    return p.slice().sort(function (a, b) {
+      var A = ages[a.id], B = ages[b.id];
+      if (A === null && B === null) return p.indexOf(a) - p.indexOf(b);
+      if (A === null) return -1;
+      if (B === null) return 1;
+      if (B !== A) return B - A;
+      return p.indexOf(a) - p.indexOf(b);
+    });
+  }
+
+  // what to put in front of you tonight: the most overdue areas you haven't
+  // already done today. Doing something else instead is not an error — it just
+  // resets that area's clock and the others keep rising.
+  function suggestParts(h, key) {
+    var ages = partAges(h), picked = partsOn(key, h.id);
+    var want = needOf(h) - picked.length;
+    if (want <= 0) return [];
+    return partOrder(h, ages)
+      .filter(function (x) { return picked.indexOf(x.id) === -1; })
+      .slice(0, want)
+      .map(function (x) { return x.id; });
+  }
+
+  function hintFor(h, key) {
+    if (!partsOf(h)) return "";
+    var picked = partsOn(key, h.id);
+    var next = suggestParts(h, key);
+    if (!next.length) {
+      return picked.length ? "did " + picked.map(function (pid) { return partLabel(h, pid); }).join(" \u00b7 ") : "";
+    }
+    var lead = picked.length ? "also " : (h.group === "evening" ? "tonight: " : "next: ");
+    return lead + next.map(function (pid) { return partLabel(h, pid); }).join(" \u00b7 ");
+  }
+
+  function ageText(v) {
+    if (v === null) return "never";
+    if (v === 0) return "today";
+    if (v === 1) return "yesterday";
+    return v + " days ago";
+  }
+
+  /* ---------- storage ---------- */
+
+  function migrate(raw) {
+    var out = {};
+    for (var k in raw) {
+      if (!Object.prototype.hasOwnProperty.call(raw, k)) continue;
+      var v = raw[k];
+      if (Array.isArray(v)) { out[k] = v; continue; }
+      if (typeof v === "string") {
+        var ids = [];
+        for (var i = 0; i < v.length && i < LEGACY_ORDER.length; i++) {
+          if (v.charAt(i) === "1") ids.push(LEGACY_ORDER[i]);
+        }
+        if (ids.length) out[k] = ids;
+      }
+    }
+    // the old combined head/neck/jaw habit becomes the jaw entry
+    for (var key in out) {
+      if (!Object.prototype.hasOwnProperty.call(out, key)) continue;
+      var at = out[key].indexOf("head");
+      if (at !== -1) { out[key] = out[key].slice(); out[key][at] = "jaw"; }
+    }
+    return out;
+  }
+
+  function normalise(list) {
+    if (!Array.isArray(list)) return null;
+    var seen = {}, out = [];
+    list.forEach(function (h) {
+      if (!h || typeof h.id !== "string" || !h.id || seen[h.id]) return;
+      seen[h.id] = true;
+      var g = "anytime";
+      for (var i = 0; i < GROUPS.length; i++) if (GROUPS[i].id === h.group) g = h.group;
+      var c = (categories[0] || {}).id || "";
+      for (var j = 0; j < categories.length; j++) if (categories[j].id === h.category) c = h.category;
+      var t = parseInt(h.target, 10);
+      var dd = Array.isArray(h.days)
+        ? h.days.map(function (x) { return parseInt(x, 10); })
+                .filter(function (x) { return x >= 0 && x <= 6; })
+        : [];
+      out.push({
+        id: h.id,
+        name: typeof h.name === "string" && h.name ? h.name : "Untitled",
+        detail: typeof h.detail === "string" ? h.detail : "",
+        notes: typeof h.notes === "string" ? h.notes : "",
+        when: typeof h.when === "string" ? h.when : "",
+        mins: typeof h.mins === "string" ? h.mins : "",
+        group: g,
+        category: c,
+        core: !!h.core,
+        target: (t === -1 && dd.length) ? -1 : ((t >= 1 && t <= 6) ? t : 0),
+        days: dd,
+        images: Array.isArray(h.images) ? h.images.filter(function (x) {
+          return x && typeof x.id === "string" && x.id;
+        }).map(function (x) {
+          return {
+            id: x.id,
+            caption: typeof x.caption === "string" ? x.caption : "",
+            part: typeof x.part === "string" ? x.part : ""
+          };
+        }) : [],
+        links: Array.isArray(h.links) ? h.links.filter(function (x) {
+          return x && typeof x.url === "string" && x.url;
+        }).map(function (x) {
+          return { url: x.url, label: (typeof x.label === "string" && x.label) ? x.label : x.url };
+        }) : [],
+        parts: Array.isArray(h.parts) ? h.parts.filter(function (x) {
+          return x && typeof x.id === "string" && x.id;
+        }).map(function (x) {
+          return { id: x.id, label: (typeof x.label === "string" && x.label) ? x.label : x.id };
+        }) : [],
+        need: (function () { var k = parseInt(h.need, 10); return k >= 1 ? k : 1; })(),
+        retired: !!h.retired
+      });
+    });
+    return out.length ? out : null;
+  }
+
+  function normaliseCats(list) {
+    if (!Array.isArray(list)) return null;
+    var seen = {}, out = [];
+    list.forEach(function (c) {
+      if (!c || typeof c.id !== "string" || !c.id || seen[c.id]) return;
+      seen[c.id] = true;
+      var hue = parseFloat(c.hue);
+      out.push({
+        id: c.id,
+        label: (typeof c.label === "string" && c.label) ? c.label : "Untitled",
+        hue: isFinite(hue) ? ((hue % 360) + 360) % 360 : 0
+      });
+    });
+    return out.length ? out : null;
+  }
+
+  // habits saved before the notes fields existed come back blank; fill the gaps
+  // from the shipped defaults so the written-up protocols aren't invisible
+  function backfillFromDefaults() {
+    habits.forEach(function (h) {
+      var d = null;
+      for (var i = 0; i < DEFAULT_HABITS.length; i++) {
+        if (DEFAULT_HABITS[i].id === h.id) { d = DEFAULT_HABITS[i]; break; }
+      }
+      if (!d) return;
+      ["detail", "when", "notes", "mins"].forEach(function (f) {
+        if (!h[f]) h[f] = d[f] || "";
+      });
+      if (!(h.links || []).length && (d.links || []).length) {
+        h.links = d.links.map(function (l) { return { label: l.label, url: l.url }; });
+      }
+      if (!Array.isArray(h.images)) h.images = [];
+    });
+  }
+
+  // new habits shipped in a later version are added to an existing list exactly once,
+  // so adding items here never resurrects something deliberately deleted
+  function mergeNewDefaults(storedVersion) {
+    if (storedVersion >= CFG_VERSION) return false;
+    var have = {};
+    habits.forEach(function (h) { have[h.id] = h; });
+
+    // the old combined head/neck/jaw habit becomes the evening jaw release, and the
+    // neck and scalp parts of it arrive as their own habits below
+    if (have.head && !have.jaw) {
+      var d0 = null;
+      for (var q = 0; q < DEFAULT_HABITS.length; q++) {
+        if (DEFAULT_HABITS[q].id === "jaw") { d0 = DEFAULT_HABITS[q]; break; }
+      }
+      have.head.id = "jaw";
+      if (d0) {
+        ["name", "detail", "when", "notes", "mins", "category", "group"].forEach(function (f) {
+          have.head[f] = d0[f];
+        });
+      }
+      have.jaw = have.head;
+      delete have.head;
+    }
+
+    DEFAULT_HABITS.forEach(function (d) {
+      if (have[d.id]) return;
+      var copy = {};
+      for (var k in d) if (Object.prototype.hasOwnProperty.call(d, k)) copy[k] = d[k];
+      copy.days = (d.days || []).slice();
+      habits.push(copy);
+    });
+    return true;
+  }
+
+  function loadLocal() {
+    try { var log = localStorage.getItem(LOG_KEY); if (log) days = migrate(JSON.parse(log) || {}); } catch (e) {}
+    try { var pr = localStorage.getItem(PARTS_KEY); if (pr) parts = JSON.parse(pr) || {}; } catch (e) {}
+    var parsed = null;
+    try { var cfg = localStorage.getItem(CFG_KEY); parsed = cfg ? JSON.parse(cfg) : null; } catch (e) {}
+    var rawHabits = Array.isArray(parsed) ? parsed : (parsed && parsed.habits);
+    var rawCats = (parsed && !Array.isArray(parsed)) ? parsed.categories : null;
+    categories = normaliseCats(rawCats) || DEFAULT_CATEGORIES.map(function (c) {
+      return { id: c.id, label: c.label, hue: c.hue };
+    });
+    var fresh = !normalise(rawHabits);
+    habits = normalise(rawHabits) || DEFAULT_HABITS.slice();
+    var stored = (parsed && !Array.isArray(parsed) && parsed.version) || 0;
+    var added = fresh ? false : mergeNewDefaults(stored);
+    cfgVersion = CFG_VERSION;
+    backfillFromDefaults();
+    sortHabits();
+    if (added || stored < CFG_VERSION) saveCfg();
+  }
+  function saveLocal() {
+    try {
+      localStorage.setItem(LOG_KEY, JSON.stringify(days));
+      localStorage.setItem(PARTS_KEY, JSON.stringify(parts));
+      localStorage.setItem(CFG_KEY, JSON.stringify({ habits: habits, categories: categories, version: cfgVersion }));
+    } catch (e) {}
+  }
+  function setSaveState(t) { var n = document.getElementById("save-state"); if (n) n.textContent = t; }
+  function onSaveError(err) {
+    setSaveState(err && err.code === "not_granted" ? "saved on this device only"
+                                                   : "not saved — change it again to retry");
+  }
+  function saveLog() {
+    saveLocal();
+    if (!db) return;
+    setSaveState("saving…");
+    clearTimeout(logTimer);
+    logTimer = setTimeout(function () {
+      var t = logTimer;
+      db.doc(LOG_PATH).set({ days: days, parts: parts, updatedAt: new Date().toISOString() })
+        .then(function () { if (logTimer === t) logTimer = null; setSaveState("saved"); }, onSaveError);
+    }, 600);
+  }
+  function saveCfg() {
+    saveLocal();
+    if (!db) return;
+    setSaveState("saving…");
+    clearTimeout(cfgTimer);
+    cfgTimer = setTimeout(function () {
+      var t = cfgTimer;
+      db.doc(CFG_PATH).set({ habits: habits, categories: categories, version: cfgVersion, updatedAt: new Date().toISOString() })
+        .then(function () { if (cfgTimer === t) cfgTimer = null; setSaveState("saved"); }, onSaveError);
+    }, 700);
+  }
+
+  /* ---------- checklist ---------- */
+
+  /* ---------- photos ---------- */
+
+  var PHOTO_KEY = "seven-squares-photo-";
+  var PHOTO_PATH = "photos";
+  var MAX_PHOTO = 230000;        // keep each one inside a single database document
+  var photoCache = {};
+
+  function newPhotoId() {
+    return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  }
+
+  // scale and re-encode until it fits; anatomy plates survive this fine at ~1400px
+  function compressImage(file, cb) {
+    var reader = new FileReader();
+    reader.onerror = function () { cb(null); };
+    reader.onload = function () {
+      var img = new Image();
+      img.onerror = function () { cb(null); };
+      img.onload = function () {
+        var w = img.width, h = img.height;
+        var scale = Math.min(1, 1400 / Math.max(w, h));
+        w = Math.max(1, Math.round(w * scale));
+        h = Math.max(1, Math.round(h * scale));
+        var c = document.createElement("canvas");
+        function draw() {
+          c.width = w; c.height = h;
+          var ctx = c.getContext("2d");
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+        }
+        draw();
+        var q = 0.85, out = c.toDataURL("image/jpeg", q);
+        while (out.length > MAX_PHOTO && q > 0.4) { q -= 0.1; out = c.toDataURL("image/jpeg", q); }
+        var guard = 0;
+        while (out.length > MAX_PHOTO && w > 420 && guard++ < 8) {
+          w = Math.round(w * 0.8); h = Math.round(h * 0.8);
+          draw();
+          out = c.toDataURL("image/jpeg", 0.75);
+        }
+        cb(out.length > MAX_PHOTO ? null : out);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function savePhoto(pid, data) {
+    photoCache[pid] = data;
+    try { localStorage.setItem(PHOTO_KEY + pid, data); } catch (e) {}
+    if (db) db.doc(PHOTO_PATH + "/" + pid).set({ data: data }).then(null, function () {});
+  }
+
+  function getPhoto(pid, cb) {
+    if (photoCache[pid]) { cb(photoCache[pid]); return; }
+    var local = null;
+    try { local = localStorage.getItem(PHOTO_KEY + pid); } catch (e) {}
+    if (local) { photoCache[pid] = local; cb(local); return; }
+    if (!db) { cb(null); return; }
+    db.doc(PHOTO_PATH + "/" + pid).get().then(function (snap) {
+      var d = snap.exists ? (snap.data() || {}).data : null;
+      if (typeof d === "string" && d) {
+        photoCache[pid] = d;
+        try { localStorage.setItem(PHOTO_KEY + pid, d); } catch (e) {}
+        cb(d);
+      } else { cb(null); }
+    }, function () { cb(null); });
+  }
+
+  function dropPhoto(pid) {
+    delete photoCache[pid];
+    try { localStorage.removeItem(PHOTO_KEY + pid); } catch (e) {}
+    if (db) db.doc(PHOTO_PATH + "/" + pid).delete().then(null, function () {});
+  }
+
+  function makeRow(h) {
+    var hue = colorOf(h);
+    var state = dueState(h, viewKey);
+    var btn = el("button", "row" + (h.core ? " is-core" : "") + (state === "off" ? " not-due" : ""));
+    btn.type = "button";
+    btn.id = "row-" + h.id;
+    btn.style.setProperty("--hue", hue);
+    btn.setAttribute("aria-pressed", "false");
+    btn.appendChild(el("span", "box"));
+
+    var text = el("span", "row-text");
+    var nm = el("span", "row-name", h.name);
+    if (h.core) nm.appendChild(el("span", "core-dot", "•"));
+    text.appendChild(nm);
+    if (state === "off") {
+      text.appendChild(el("span", "row-detail", "Not required today — " + cadenceLabel(h)));
+    } else if (h.detail) {
+      text.appendChild(el("span", "row-detail", h.detail));
+    }
+    if (state !== "off" && partsOf(h)) {
+      var hint = el("span", "row-hint", hintFor(h, viewKey));
+      hint.id = "hint-" + h.id;
+      text.appendChild(hint);
+    }
+    btn.appendChild(text);
+
+    if (state === "flexible") {
+      var n = weekCount(mondayOf(viewKey), h.id);
+      var chip = el("span", "week-chip" + (n >= h.target ? " met" : ""), n + "/" + h.target + " wk");
+      chip.id = "chip-" + h.id;
+      btn.appendChild(chip);
+    }
+
+    var st = streakOf(h);
+    var sc = el("span", "streak-chip" + (st.n >= 3 ? " hot" : ""), st.n ? "▲ " + st.n : "");
+    sc.id = "streak-" + h.id;
+    sc.title = st.n ? st.n + " " + st.unit + " running" : "No streak yet";
+    btn.appendChild(sc);
+
+    var info = el("button", "info-btn", "i");
+    info.type = "button";
+    info.setAttribute("aria-label", "Details for " + h.name);
+    info.title = "Details";
+    info.addEventListener("click", function (ev) { ev.stopPropagation(); openDetail(h.id); });
+    btn.appendChild(info);
+
+    btn.addEventListener("click", function () { toggle(h.id); });
+    return btn;
+  }
+
+  function sectionHead(label, hue) {
+    var head = el("div", "group-head");
+    var lab = el("span", "eyebrow", label);
+    if (hue) lab.style.color = hue;
+    head.appendChild(lab);
+    head.appendChild(el("span", "rule"));
+    return head;
+  }
+
+  function buildView() {
+    var root = document.getElementById("groups");
+    root.textContent = "";
+    renderedGroup = currentGroup();
+    var onToday = (viewKey === todayKey);
+    GROUPS.forEach(function (g) {
+      var items = groupItems(g.id);
+      if (!items.length) return;
+      var s = el("section", "group");
+      var head = sectionHead(g.label);
+      if (onToday && g.id === renderedGroup) {
+        head.insertBefore(el("span", "now-chip", "now"), head.childNodes[1]);
+      }
+      s.appendChild(head);
+      items.forEach(function (h) { s.appendChild(makeRow(h)); });
+      root.appendChild(s);
+    });
+  }
+
+  /* ---------- detail sheet ---------- */
+
+  var openScrim = null;
+
+  function closeSheet() {
+    if (!openScrim) return;
+    openScrim.parentNode.removeChild(openScrim);
+    openScrim = null;
+    document.body.style.overflow = "";
+  }
+
+  function makeSheet() {
+    closeSheet();
+    var scrim = el("div", "scrim");
+    var sheet = el("div", "sheet");
+    scrim.appendChild(sheet);
+    scrim.addEventListener("click", function (ev) { if (ev.target === scrim) closeSheet(); });
+    document.body.appendChild(scrim);
+    document.body.style.overflow = "hidden";
+    openScrim = scrim;
+    return sheet;
+  }
+
+  var DAY_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+  function openDetail(id, editMode) {
+    var h = habitById(id);
+    if (!h) return;
+    var hue = colorOf(h);
+    var sheet = makeSheet();
+    sheet.style.setProperty("--hue", hue);
+    sheet.style.setProperty("--ok", "oklch(var(--lum) var(--chroma) 150)");
+
+    var top = el("div", "sheet-top");
+    var left = document.createElement("div");
+    var chip = el("span", "cat-chip");
+    chip.appendChild(el("i"));
+    chip.appendChild(el("span", null, catOf(h.category).label));
+    left.appendChild(chip);
+    left.appendChild(el("h2", "sheet-title", h.name || "Untitled"));
+    top.appendChild(left);
+    var close = el("button", "icon-btn", "×");
+    close.type = "button";
+    close.setAttribute("aria-label", "Close");
+    close.addEventListener("click", closeSheet);
+    top.appendChild(close);
+    sheet.appendChild(top);
+
+    if (editMode) buildDetailEdit(sheet, h, id);
+    else buildDetailRead(sheet, h, id);
+  }
+
+  function metaLine(label, value) {
+    var d = el("div", "meta-item");
+    d.appendChild(el("span", "eyebrow", label));
+    d.appendChild(el("span", "meta-val", value));
+    return d;
+  }
+
+  function buildDetailRead(sheet, h, id) {
+    var meta = el("div", "meta-grid");
+    meta.appendChild(metaLine("Part of day", groupLabel(h.group)));
+    meta.appendChild(metaLine("How often", cadenceLabel(h)));
+    if (h.mins) meta.appendChild(metaLine("Roughly", h.mins));
+    meta.appendChild(metaLine("Floor", h.core ? "Non-negotiable" : "Optional"));
+    sheet.appendChild(meta);
+
+    // always render every section, so you can see at a glance what is and isn't written up
+    function readField(label, value, pre) {
+      var f = el("div", "sheet-field");
+      f.appendChild(el("label", null, label));
+      if (value) {
+        f.appendChild(el(pre ? "pre" : "p", pre ? "read-notes" : "read-body", value));
+      } else {
+        f.appendChild(el("p", "read-empty", "Nothing written yet \u2014 Edit to add it."));
+      }
+      sheet.appendChild(f);
+    }
+    readField("Summary line", h.detail, false);
+    readField("When to do it", h.when, false);
+
+    if (partsOf(h) && !h.retired) {
+      var pf = el("div", "sheet-field");
+      pf.appendChild(el("label", null, "Areas \u2014 any " + needOf(h) + " counts as done"));
+      var plist = el("div", "part-list");
+      pf.appendChild(plist);
+      var pnote = el("p", "part-note", "");
+      pf.appendChild(pnote);
+      sheet.appendChild(pf);
+
+      var paintParts = function () {
+        plist.textContent = "";
+        var ages = partAges(h);
+        var picked = partsOn(viewKey, h.id);
+        var sug = suggestParts(h, viewKey);
+        partOrder(h, ages).forEach(function (p) {
+          var on = picked.indexOf(p.id) !== -1;
+          var row = el("button", "part-row" + (on ? " on" : ""));
+          row.type = "button";
+          row.appendChild(el("span", "part-box"));
+          row.appendChild(el("span", "part-name", p.label));
+          if (!on && sug.indexOf(p.id) !== -1) row.appendChild(el("span", "part-sug", "due"));
+          row.appendChild(el("span", "part-age", on ? "done" : ageText(ages[p.id])));
+          row.addEventListener("click", function () {
+            var list = setPartOn(viewKey, h.id, p.id, !on);
+            setOn(viewKey, h.id, list.length >= needOf(h));
+            saveLog();
+            paintParts();
+            paintRows();
+            paintDay(viewKey);
+            paintMonthCounts();
+            paintStats();
+            paintLegend();
+          });
+          plist.appendChild(row);
+        });
+        var done = partsOn(viewKey, h.id).length, k = needOf(h);
+        pnote.textContent = done >= k
+          ? "Bar met for this day. Anything else you tick is a bonus."
+          : done + " of " + k + " \u2014 the square fills at " + k + ", but each area is logged on its own either way.";
+      };
+      paintParts();
+    }
+
+    readField("How to do it", h.notes, true);
+
+    function photoDrop(im) {
+      var d = document.createElement("details");
+      d.className = "photo-drop";
+      var sum = document.createElement("summary");
+      sum.appendChild(el("span", "photo-ico", "\u25B8"));
+      sum.appendChild(document.createTextNode(im.caption || "Photo"));
+      d.appendChild(sum);
+      var holder = el("div", "photo-holder");
+      holder.appendChild(el("p", "read-empty", "Loading\u2026"));
+      d.appendChild(holder);
+      var loaded = false;
+      d.addEventListener("toggle", function () {
+        if (!d.open || loaded) return;
+        loaded = true;
+        getPhoto(im.id, function (data) {
+          holder.textContent = "";
+          if (!data) {
+            holder.appendChild(el("p", "read-empty", "That photo isn\u2019t on this device and couldn\u2019t be fetched."));
+            return;
+          }
+          var img = document.createElement("img");
+          img.src = data;
+          img.alt = im.caption || "Reference photo for " + h.name;
+          img.loading = "lazy";
+          holder.appendChild(img);
+        });
+      });
+      return d;
+    }
+
+    // with areas in play a flat pile of twenty photos is useless — file each one
+    // under the area it belongs to, in the same order the areas are listed
+    var imgs = h.images || [];
+    if (imgs.length) {
+      var areas = partsOf(h);
+      if (areas) {
+        var buckets = {}, loose = [];
+        imgs.forEach(function (im) {
+          if (im.part && buckets[im.part] !== undefined) buckets[im.part].push(im);
+          else if (im.part) buckets[im.part] = [im];
+          else loose.push(im);
+        });
+        areas.forEach(function (p) {
+          var mine = buckets[p.id] || [];
+          if (!mine.length) return;
+          sheet.appendChild(el("div", "photo-group-label", p.label));
+          mine.forEach(function (im) { sheet.appendChild(photoDrop(im)); });
+        });
+        loose.forEach(function (im) { sheet.appendChild(photoDrop(im)); });
+      } else {
+        imgs.forEach(function (im) { sheet.appendChild(photoDrop(im)); });
+      }
+    }
+
+    if ((h.links || []).length) {
+      var lf = el("div", "sheet-field");
+      lf.appendChild(el("label", null, "Links"));
+      var ul = el("ul", "link-list");
+      h.links.forEach(function (l) {
+        var li = document.createElement("li");
+        var a = document.createElement("a");
+        a.href = l.url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = l.label || l.url;
+        li.appendChild(a);
+        ul.appendChild(li);
+      });
+      lf.appendChild(ul);
+      sheet.appendChild(lf);
+    }
+
+    var st = streakOf(h);
+    var stats = el("div", "sheet-stats");
+    function stat(label, value, cls) {
+      var d = el("div", "sheet-stat");
+      d.appendChild(el("div", "eyebrow", label));
+      d.appendChild(el("b", cls || null, value));
+      return d;
+    }
+    stats.appendChild(stat("Streak", st.n ? st.n + " " + st.unit : "—", st.n >= 3 ? "hot" : null));
+    stats.appendChild(stat("Last 30 days", rateLabel(h)));
+    stats.appendChild(stat("This week", weekCount(mondayOf(viewKey), h.id) + (h.target > 0 ? " / " + h.target : "")));
+    stats.appendChild(stat("All time", totalDone(h.id) + " days"));
+    sheet.appendChild(stats);
+
+    var actions = el("div", "sheet-actions");
+    var edit = el("button", "btn", "Edit");
+    edit.type = "button";
+    edit.addEventListener("click", function () { closeSheet(); openDetail(id, true); });
+    actions.appendChild(edit);
+
+    if (partsOf(h)) {
+      var bd = el("button", "btn", "Breakdown");
+      bd.type = "button";
+      bd.title = "Each area's own history for the year";
+      bd.addEventListener("click", function () { closeSheet(); openBreakdown(id); });
+      actions.appendChild(bd);
+    }
+
+    if (h.retired) {
+      var back = el("button", "btn", "Put back on the list");
+      back.type = "button";
+      back.addEventListener("click", function () { closeSheet(); restore(h); });
+      actions.appendChild(back);
+    } else {
+      var logged = hasHistory(h.id);
+      var rt = el("button", "btn", logged ? "Retire" : "Delete");
+      rt.type = "button";
+      rt.title = logged ? "Leaves the checklist, keeps its days in the grid"
+                        : "Nothing logged against it, so it goes entirely";
+      rt.addEventListener("click", function () { closeSheet(); retireOrDelete(h); });
+      actions.appendChild(rt);
+    }
+
+    var done = el("button", "btn", "Done");
+    done.type = "button";
+    done.addEventListener("click", closeSheet);
+    actions.appendChild(done);
+    sheet.appendChild(actions);
+  }
+
+  function buildDetailEdit(sheet, h, id) {
+    var title = sheet.querySelector(".sheet-title");
+
+    function field(label, node) {
+      var f = el("div", "sheet-field");
+      var l = document.createElement("label");
+      l.textContent = label;
+      f.appendChild(l);
+      f.appendChild(node);
+      return f;
+    }
+
+    var name = document.createElement("input");
+    name.type = "text"; name.value = h.name; name.id = "d-name";
+    name.addEventListener("input", function () {
+      h.name = name.value; title.textContent = name.value; saveCfg(); refreshAll();
+    });
+    sheet.appendChild(field("Name", name));
+
+    var detail = document.createElement("input");
+    detail.type = "text"; detail.value = h.detail; detail.id = "d-detail";
+    detail.placeholder = "The one line that shows on the row";
+    detail.addEventListener("input", function () { h.detail = detail.value; saveCfg(); refreshAll(); });
+    sheet.appendChild(field("Summary line", detail));
+
+    var when = document.createElement("input");
+    when.type = "text"; when.value = h.when; when.id = "d-when";
+    when.placeholder = "When to do it, and why then";
+    when.addEventListener("input", function () { h.when = when.value; saveCfg(); });
+    sheet.appendChild(field("When to do it", when));
+
+    var notes = document.createElement("textarea");
+    notes.value = h.notes; notes.id = "d-notes";
+    notes.placeholder = "Exactly what it looks like — the muscles, the order, the counts, what to avoid.";
+    notes.addEventListener("input", function () { h.notes = notes.value; saveCfg(); });
+    sheet.appendChild(field("How to do it", notes));
+
+    var rowWrap = el("div", "sheet-row");
+
+    var cat = document.createElement("select");
+    cat.id = "d-cat";
+    categories.forEach(function (c) {
+      var o = document.createElement("option");
+      o.value = c.id; o.textContent = c.label;
+      if (c.id === h.category) o.selected = true;
+      cat.appendChild(o);
+    });
+    cat.addEventListener("change", function () {
+      h.category = cat.value; saveCfg(); refreshAll(); closeSheet(); openDetail(id, true);
+    });
+    rowWrap.appendChild(field("Category", cat));
+
+    var grp = document.createElement("select");
+    grp.id = "d-group";
+    GROUPS.forEach(function (g) {
+      var o = document.createElement("option");
+      o.value = g.id; o.textContent = g.label;
+      if (g.id === h.group) o.selected = true;
+      grp.appendChild(o);
+    });
+    grp.addEventListener("change", function () { h.group = grp.value; sortHabits(); saveCfg(); refreshAll(); });
+    rowWrap.appendChild(field("Part of day", grp));
+
+    var mins = document.createElement("input");
+    mins.type = "text"; mins.value = h.mins; mins.id = "d-mins"; mins.placeholder = "8 min";
+    mins.addEventListener("input", function () { h.mins = mins.value; saveCfg(); });
+    rowWrap.appendChild(field("Roughly how long", mins));
+    sheet.appendChild(rowWrap);
+
+    var tgt = document.createElement("select");
+    tgt.id = "d-target";
+    [["0", "Every day"], ["1", "1× a week"], ["2", "2× a week"], ["3", "3× a week"],
+     ["4", "4× a week"], ["5", "5× a week"], ["6", "6× a week"],
+     ["-1", "Specific days…"]].forEach(function (p) {
+      var o = document.createElement("option");
+      o.value = p[0]; o.textContent = p[1];
+      if (+p[0] === (h.target || 0)) o.selected = true;
+      tgt.appendChild(o);
+    });
+    var cadField = field("How often", tgt);
+
+    var dayPick = el("div", "daypick");
+    dayPick.id = "d-daypick";
+    [1, 2, 3, 4, 5, 6, 0].forEach(function (d) {
+      var b = el("button", "daybtn", DAY_NAMES[d].charAt(0));
+      b.type = "button";
+      b.title = DAY_NAMES[d];
+      b.setAttribute("aria-pressed", (h.days || []).indexOf(d) !== -1 ? "true" : "false");
+      b.addEventListener("click", function () {
+        h.days = h.days || [];
+        var at = h.days.indexOf(d);
+        if (at === -1) h.days.push(d); else h.days.splice(at, 1);
+        b.setAttribute("aria-pressed", at === -1 ? "true" : "false");
+        saveCfg(); refreshAll();
+      });
+      dayPick.appendChild(b);
+    });
+    dayPick.hidden = (h.target !== -1);
+    cadField.appendChild(dayPick);
+
+    tgt.addEventListener("change", function () {
+      h.target = +tgt.value;
+      if (h.target === -1 && !(h.days || []).length) h.days = [1, 3, 5];
+      dayPick.hidden = (h.target !== -1);
+      if (h.target === -1) {
+        var bs = dayPick.querySelectorAll(".daybtn");
+        [1, 2, 3, 4, 5, 6, 0].forEach(function (d, i) {
+          bs[i].setAttribute("aria-pressed", h.days.indexOf(d) !== -1 ? "true" : "false");
+        });
+      }
+      saveCfg(); refreshAll();
+    });
+    sheet.appendChild(cadField);
+
+    // photos
+    var pf = el("div", "sheet-field");
+    pf.appendChild(el("label", null, "Photos"));
+    var plist = el("div", "photo-edit-list");
+    pf.appendChild(plist);
+
+    function paintPhotos() {
+      plist.textContent = "";
+      (h.images || []).forEach(function (im, idx) {
+        var r = el("div", "photo-edit-row");
+        var thumb = el("div", "photo-thumb");
+        getPhoto(im.id, function (data) {
+          if (!data) { thumb.appendChild(el("span", "read-empty", "?")); return; }
+          var t = document.createElement("img");
+          t.src = data;
+          t.alt = "";
+          thumb.appendChild(t);
+        });
+        r.appendChild(thumb);
+        var cap = document.createElement("input");
+        cap.type = "text";
+        cap.value = im.caption;
+        cap.placeholder = "Caption \u2014 what this photo shows";
+        cap.addEventListener("input", function () { im.caption = cap.value; saveCfg(); });
+        r.appendChild(cap);
+        var areaList = partsOf(h);
+        if (areaList) {
+          var ps = document.createElement("select");
+          var none = document.createElement("option");
+          none.value = "";
+          none.textContent = "No area";
+          ps.appendChild(none);
+          areaList.forEach(function (p) {
+            var o = document.createElement("option");
+            o.value = p.id;
+            o.textContent = p.label;
+            ps.appendChild(o);
+          });
+          ps.value = im.part || "";
+          ps.addEventListener("change", function () { im.part = ps.value; saveCfg(); });
+          r.appendChild(ps);
+        }
+        var rm = el("button", "icon-btn del", "\u00D7");
+        rm.type = "button";
+        rm.setAttribute("aria-label", "Remove photo");
+        rm.addEventListener("click", function () {
+          dropPhoto(im.id);
+          h.images.splice(idx, 1);
+          saveCfg();
+          paintPhotos();
+        });
+        r.appendChild(rm);
+        plist.appendChild(r);
+      });
+
+      var pick = el("label", "add-btn");
+      pick.textContent = "+  Add a photo";
+      var fi = document.createElement("input");
+      fi.type = "file";
+      fi.accept = "image/*";
+      fi.style.display = "none";
+      fi.addEventListener("change", function () {
+        var f = fi.files && fi.files[0];
+        if (!f) return;
+        pick.textContent = "Processing\u2026";
+        compressImage(f, function (data) {
+          pick.textContent = "+  Add a photo";
+          if (!data) {
+            pick.textContent = "That image wouldn\u2019t fit \u2014 try a smaller one";
+            return;
+          }
+          var pid = newPhotoId();
+          savePhoto(pid, data);
+          h.images = h.images || [];
+          h.images.push({ id: pid, caption: "" });
+          saveCfg();
+          paintPhotos();
+        });
+        fi.value = "";
+      });
+      pick.appendChild(fi);
+      plist.appendChild(pick);
+    }
+    paintPhotos();
+    sheet.appendChild(pf);
+
+    // links
+    var lf2 = el("div", "sheet-field");
+    lf2.appendChild(el("label", null, "Links"));
+    var llist = el("div", "link-edit-list");
+    lf2.appendChild(llist);
+
+    function paintLinks() {
+      llist.textContent = "";
+      (h.links || []).forEach(function (l, idx) {
+        var r = el("div", "link-edit-row");
+        var lab = document.createElement("input");
+        lab.type = "text";
+        lab.value = l.label;
+        lab.placeholder = "Label";
+        lab.addEventListener("input", function () { l.label = lab.value; saveCfg(); });
+        var url = document.createElement("input");
+        url.type = "text";
+        url.value = l.url;
+        url.placeholder = "https://\u2026";
+        url.addEventListener("input", function () { l.url = url.value; saveCfg(); });
+        var rm = el("button", "icon-btn del", "\u00D7");
+        rm.type = "button";
+        rm.setAttribute("aria-label", "Remove link");
+        rm.addEventListener("click", function () { h.links.splice(idx, 1); saveCfg(); paintLinks(); });
+        r.appendChild(lab); r.appendChild(url); r.appendChild(rm);
+        llist.appendChild(r);
+      });
+      var add = el("button", "add-btn", "+  Add a link");
+      add.type = "button";
+      add.addEventListener("click", function () {
+        h.links = h.links || [];
+        h.links.push({ label: "", url: "" });
+        saveCfg();
+        paintLinks();
+      });
+      llist.appendChild(add);
+    }
+    paintLinks();
+    sheet.appendChild(lf2);
+
+    var coreWrap = el("label", "sheet-core");
+    var core = document.createElement("input");
+    core.type = "checkbox"; core.checked = h.core; core.id = "d-core";
+    core.addEventListener("change", function () { h.core = core.checked; saveCfg(); refreshAll(); });
+    coreWrap.appendChild(core);
+    coreWrap.appendChild(document.createTextNode("Non-negotiable — pins to the top of its section and feeds the Core streak"));
+    var cf = el("div", "sheet-field");
+    cf.appendChild(coreWrap);
+    sheet.appendChild(cf);
+
+    var actions = el("div", "sheet-actions");
+    var back = el("button", "btn", "‹ Back to detail");
+    back.type = "button";
+    back.addEventListener("click", function () { closeSheet(); openDetail(id, false); });
+    actions.appendChild(back);
+    var done = el("button", "btn", "Done");
+    done.type = "button";
+    done.addEventListener("click", closeSheet);
+    actions.appendChild(done);
+    sheet.appendChild(actions);
+  }
+
+  function totalDone(id) {
+    var n = 0;
+    for (var k in days) if (Object.prototype.hasOwnProperty.call(days, k) && days[k].indexOf(id) !== -1) n++;
+    return n;
+  }
+
+  function rateLabel(h) {
+    if (h.target) {
+      var weeksMet = 0, mon = mondayOf(todayKey);
+      for (var w = 0; w < 4; w++) {
+        if (weekCount(shiftDay(mon, -7 * w), h.id) >= h.target) weeksMet++;
+      }
+      return weeksMet + "/4 wks";
+    }
+    var d = new Date(), hits = 0;
+    d.setHours(12, 0, 0, 0);
+    for (var i = 0; i < 30; i++) {
+      if (isOn(keyOf(d), h.id)) hits++;
+      d.setDate(d.getDate() - 1);
+    }
+    return Math.round((hits / 30) * 100) + "%";
+  }
+
+  /* ---------- categories ---------- */
+
+  function catInUse(id) {
+    return habits.filter(function (h) { return h.category === id; }).length;
+  }
+
+  function freeHue() {
+    var used = categories.map(function (c) { return c.hue; });
+    for (var h = 0; h < 360; h += 15) {
+      var clear = used.every(function (u) {
+        var d = Math.abs(((u - h + 540) % 360) - 180);
+        return (180 - d) > 28;
+      });
+      if (clear) return h;
+    }
+    return Math.floor(Math.random() * 360);
+  }
+
+  function applyCategoryChange() {
+    saveCfg();
+    if (editing) buildEdit(); else buildView();
+    rebuildGrid();
+    refreshAll();
+  }
+
+  function openCategories() {
+    var sheet = makeSheet();
+
+    var top = el("div", "sheet-top");
+    var left = document.createElement("div");
+    left.appendChild(el("div", "eyebrow", "Colour key"));
+    left.appendChild(el("h2", "sheet-title", "Categories"));
+    top.appendChild(left);
+    var close = el("button", "icon-btn", "×");
+    close.type = "button";
+    close.setAttribute("aria-label", "Close");
+    close.addEventListener("click", closeSheet);
+    top.appendChild(close);
+    sheet.appendChild(top);
+
+    sheet.appendChild(el("p", "read-body",
+      "Category sets the hue; habits inside one are told apart by shade. Removing a category moves its habits to the one above it."));
+
+    var list = el("div", "cat-list");
+    sheet.appendChild(list);
+
+    function paintList() {
+      list.textContent = "";
+      categories.forEach(function (c, i) {
+        var row = el("div", "cat-row");
+        row.style.setProperty("--hue", "oklch(var(--lum) var(--chroma) " + c.hue + ")");
+
+        var sw = el("div", "cat-sw");
+        row.appendChild(sw);
+
+        var mid = el("div", "cat-mid");
+
+        var name = document.createElement("input");
+        name.type = "text";
+        name.value = c.label;
+        name.setAttribute("aria-label", "Category name");
+        name.addEventListener("input", function () {
+          c.label = name.value;
+          saveCfg();
+          paintLegend();
+        });
+        mid.appendChild(name);
+
+        var hue = document.createElement("input");
+        hue.type = "range";
+        hue.min = "0"; hue.max = "359"; hue.step = "1";
+        hue.value = String(Math.round(c.hue));
+        hue.className = "cat-hue";
+        hue.setAttribute("aria-label", "Category colour");
+        hue.addEventListener("input", function () {
+          c.hue = +hue.value;
+          row.style.setProperty("--hue", "oklch(var(--lum) var(--chroma) " + c.hue + ")");
+        });
+        hue.addEventListener("change", function () { applyCategoryChange(); });
+        mid.appendChild(hue);
+
+        var used = catInUse(c.id);
+        mid.appendChild(el("div", "cat-count",
+          used === 1 ? "1 habit" : used + " habits"));
+
+        row.appendChild(mid);
+
+        var del = el("button", "icon-btn del", "×");
+        del.type = "button";
+        del.setAttribute("aria-label", "Remove category");
+        del.title = categories.length < 2
+          ? "You need at least one category"
+          : (used ? "Removes it and moves its " + used + " habit(s) to the category above"
+                  : "Remove this category");
+        del.disabled = categories.length < 2;
+        armTwoStep(del, function () {
+          var idx = categories.indexOf(c);
+          if (idx === -1 || categories.length < 2) return;
+          var fallback = categories[idx === 0 ? 1 : idx - 1];
+          habits.forEach(function (h) { if (h.category === c.id) h.category = fallback.id; });
+          categories.splice(idx, 1);
+          applyCategoryChange();
+          paintList();
+        });
+        row.appendChild(del);
+
+        list.appendChild(row);
+      });
+
+      var add = el("button", "add-btn", "+  Add a category");
+      add.type = "button";
+      add.addEventListener("click", function () {
+        categories.push({
+          id: "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+          label: "New category",
+          hue: freeHue()
+        });
+        applyCategoryChange();
+        paintList();
+      });
+      list.appendChild(add);
+    }
+
+    paintList();
+
+    var actions = el("div", "sheet-actions");
+    var done = el("button", "btn", "Done");
+    done.type = "button";
+    done.addEventListener("click", closeSheet);
+    actions.appendChild(done);
+    sheet.appendChild(actions);
+  }
+
+  /* ---------- week sheet ---------- */
+
+  // one area per block: a year of days, then the numbers that say whether it is
+  // actually in the rotation or quietly dropping out of it
+  function openBreakdown(id) {
+    var h = habitById(id);
+    if (!h || !partsOf(h)) return;
+    var hue = colorOf(h);
+    var sheet = makeSheet();
+    sheet.style.setProperty("--hue", hue);
+
+    var top = el("div", "sheet-top");
+    var left = document.createElement("div");
+    left.appendChild(el("div", "eyebrow", "Area breakdown \u00b7 " + renderedYear));
+    left.appendChild(el("h2", "sheet-title", h.name));
+    top.appendChild(left);
+    var close = el("button", "icon-btn", "\u00d7");
+    close.type = "button";
+    close.setAttribute("aria-label", "Close");
+    close.addEventListener("click", closeSheet);
+    top.appendChild(close);
+    sheet.appendChild(top);
+
+    var jan1 = new Date(renderedYear, 0, 1);
+    var dec31 = new Date(renderedYear, 11, 31);
+    var ages = partAges(h);
+
+    // parent line first: how often the bar was actually met
+    var full = 0, partial = 0, d, key;
+    for (d = new Date(jan1); d <= dec31; d.setDate(d.getDate() + 1)) {
+      key = keyOf(d);
+      if (key > todayKey) break;
+      var f = fillOf(key, h);
+      if (f === 2) full++; else if (f === 1) partial++;
+    }
+    // measure against the days you've actually been tracking, not since January —
+    // a percentage of a year you weren't logging is just a smaller number
+    var firstKey = todayKey, kk;
+    for (kk in days) if (Object.prototype.hasOwnProperty.call(days, kk) && kk < firstKey) firstKey = kk;
+    for (kk in parts) if (Object.prototype.hasOwnProperty.call(parts, kk) && kk < firstKey) firstKey = kk;
+    var startKey = firstKey > keyOf(jan1) ? firstKey : keyOf(jan1);
+    var elapsed = Math.max(1, dayGap(startKey) + 1);
+    var sum = el("div", "bd-part");
+    var sh = el("div", "bd-head");
+    sh.appendChild(el("b", null, "Whole habit"));
+    sh.appendChild(el("span", "bd-gap", "needs any " + needOf(h) + " areas"));
+    sum.appendChild(sh);
+    var bar = el("div", "bd-bar");
+    var fillSpan = document.createElement("span");
+    fillSpan.style.width = Math.round(full / elapsed * 100) + "%";
+    bar.appendChild(fillSpan);
+    sum.appendChild(bar);
+    var snums = el("div", "bd-nums");
+    function num(parent, label, value) {
+      var w = document.createElement("span");
+      w.appendChild(document.createTextNode(label + " "));
+      w.appendChild(el("b", null, value));
+      parent.appendChild(w);
+    }
+    num(snums, "bar met", full + " d");
+    num(snums, "partial", partial + " d");
+    num(snums, "of days", Math.round(full / elapsed * 100) + "%");
+    sum.appendChild(snums);
+    sheet.appendChild(sum);
+
+    partsOf(h).forEach(function (p) {
+      var block = el("div", "bd-part");
+      var head = el("div", "bd-head");
+      head.appendChild(el("b", null, p.label));
+      head.appendChild(el("span", "bd-gap", "last " + ageText(ages[p.id])));
+      block.appendChild(head);
+
+      var strip = el("div", "bd-strip");
+      var hits = [], lastMonth = -1;
+      for (var dd = new Date(jan1); dd <= dec31; dd.setDate(dd.getDate() + 1)) {
+        var k2 = keyOf(dd);
+        if (dd.getMonth() !== lastMonth) {
+          if (lastMonth !== -1) strip.appendChild(el("i", "bd-mgap"));
+          lastMonth = dd.getMonth();
+        }
+        var on = isPartOn(k2, h.id, p.id);
+        if (on) hits.push(k2);
+        var sq = el("i", on ? "on" : (k2 > todayKey ? "void" : null));
+        sq.title = k2 + (on ? " \u2014 " + p.label : "");
+        strip.appendChild(sq);
+      }
+      block.appendChild(strip);
+
+      // typical gap says more than a raw count: 12 sessions all in January is
+      // not the same habit as 12 spread evenly
+      var gaps = [], i;
+      for (i = 1; i < hits.length; i++) {
+        gaps.push(Math.round((dateOf(hits[i]) - dateOf(hits[i - 1])) / 86400000));
+      }
+      gaps.sort(function (a, b) { return a - b; });
+      var med = gaps.length ? gaps[Math.floor(gaps.length / 2)] : null;
+      var worst = gaps.length ? gaps[gaps.length - 1] : null;
+
+      var nums = el("div", "bd-nums");
+      num(nums, "done", hits.length + " d");
+      num(nums, "of days", Math.round(hits.length / elapsed * 100) + "%");
+      num(nums, "typical gap", med === null ? "\u2014" : med + " d");
+      num(nums, "longest gap", worst === null ? "\u2014" : worst + " d");
+      block.appendChild(nums);
+      sheet.appendChild(block);
+    });
+
+    // name the area that is starving, because that is the only number that
+    // changes what you do tonight
+    var worstPart = partOrder(h, ages)[0];
+    if (worstPart) {
+      var lead = el("p", "bd-lead", ages[worstPart.id] === null
+        ? worstPart.label + " hasn\u2019t been touched yet \u2014 it\u2019s first in the queue."
+        : worstPart.label + " is the one falling behind, last done " + ageText(ages[worstPart.id]) + ".");
+      sheet.appendChild(lead);
+    }
+
+    var acts = el("div", "sheet-actions");
+    var back = el("button", "btn", "\u2039 Back to detail");
+    back.type = "button";
+    back.addEventListener("click", function () { closeSheet(); openDetail(id); });
+    acts.appendChild(back);
+    var doneB = el("button", "btn", "Done");
+    doneB.type = "button";
+    doneB.addEventListener("click", closeSheet);
+    acts.appendChild(doneB);
+    sheet.appendChild(acts);
+  }
+
+  function openWeek(mondayKey) {
+    var sheet = makeSheet();
+    var top = el("div", "sheet-top");
+    var left = document.createElement("div");
+    left.appendChild(el("div", "eyebrow", "Week"));
+    left.appendChild(el("h2", "sheet-title", weekLabel(mondayKey)));
+    top.appendChild(left);
+    var close = el("button", "icon-btn", "×");
+    close.type = "button";
+    close.setAttribute("aria-label", "Close");
+    close.addEventListener("click", closeSheet);
+    top.appendChild(close);
+    sheet.appendChild(top);
+
+    var keys = weekDays(mondayKey);
+    var rows = gridOrder().filter(function (h) {
+      return !h.retired || keys.some(function (k) { return isOn(k, h.id); });
+    });
+
+    var wrap = el("div", "wk-grid");
+    var table = el("table", "wk-table");
+
+    var thead = document.createElement("thead");
+    var hr = document.createElement("tr");
+    hr.appendChild(el("th", "name", ""));
+    keys.forEach(function (k, i) {
+      var th = el("th", k === todayKey ? "td-today" : null, DAY_INIT[i] + " " + dateOf(k).getDate());
+      th.title = "Open " + DAYS_LONG[dateOf(k).getDay()];
+      if (k <= todayKey) {
+        th.addEventListener("click", function () { closeSheet(); goToDay(k); });
+      } else { th.style.opacity = "0.4"; th.style.cursor = "default"; }
+      hr.appendChild(th);
+    });
+    hr.appendChild(el("th", null, ""));
+    thead.appendChild(hr);
+    table.appendChild(thead);
+
+    var tbody = document.createElement("tbody");
+    rows.forEach(function (h) {
+      var tr = document.createElement("tr");
+      tr.style.setProperty("--hue", colorOf(h));
+      var nameCell = el("td", "name", h.name);
+      nameCell.title = h.name;
+      tr.appendChild(nameCell);
+      var hits = 0;
+      keys.forEach(function (k) {
+        var td = document.createElement("td");
+        var on = isOn(k, h.id);
+        if (on) hits++;
+        var cls = "wk-cell" + (on ? " on" : (k > todayKey ? " void" : ""));
+        td.appendChild(el("span", cls));
+        tr.appendChild(td);
+      });
+      var goal = h.target || 7;
+      var tally = el("td", "tally" + (hits >= goal ? " met" : ""), hits + "/" + goal);
+      tr.appendChild(tally);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    var tfoot = document.createElement("tfoot");
+    var fr = document.createElement("tr");
+    fr.appendChild(el("td", "name", "Core days"));
+    var coreDays = 0;
+    keys.forEach(function (k) {
+      var ok = k <= todayKey && coreDone(k);
+      if (ok) coreDays++;
+      fr.appendChild(el("td", null, k > todayKey ? "" : (ok ? "●" : "·")));
+    });
+    fr.appendChild(el("td", null, coreDays + "/7"));
+    tfoot.appendChild(fr);
+    table.appendChild(tfoot);
+
+    wrap.appendChild(table);
+    sheet.appendChild(wrap);
+
+    var note = el("p", "edit-note", "Tap a day along the top to open it in the checklist.");
+    note.hidden = false;
+    sheet.appendChild(note);
+
+    var actions = el("div", "sheet-actions");
+    var prev = el("button", "btn", "‹ Previous week");
+    prev.type = "button";
+    prev.addEventListener("click", function () { openWeek(shiftDay(mondayKey, -7)); });
+    actions.appendChild(prev);
+    if (mondayKey < mondayOf(todayKey)) {
+      var next = el("button", "btn", "Next week ›");
+      next.type = "button";
+      next.addEventListener("click", function () { openWeek(shiftDay(mondayKey, 7)); });
+      actions.appendChild(next);
+    }
+    var done = el("button", "btn", "Done");
+    done.type = "button";
+    done.addEventListener("click", closeSheet);
+    actions.appendChild(done);
+    sheet.appendChild(actions);
+  }
+
+  /* ---------- edit mode ---------- */
+
+  function newId() { return "h" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+  function retireOrDelete(h) {
+    var i = habits.indexOf(h);
+    if (i === -1) return;
+    if (hasHistory(h.id)) { h.retired = true; } else { habits.splice(i, 1); }
+    afterHabitChange();
+  }
+  function restore(h) { h.retired = false; afterHabitChange(); }
+  function deleteForGood(h) {
+    var i = habits.indexOf(h);
+    if (i === -1) return;
+    for (var k in days) {
+      if (!Object.prototype.hasOwnProperty.call(days, k)) continue;
+      var at = days[k].indexOf(h.id);
+      if (at === -1) continue;
+      if (parts[k] && parts[k][h.id]) writeParts(k, h.id, []);
+      var next = days[k].slice();
+      next.splice(at, 1);
+      if (next.length) { days[k] = next; } else { delete days[k]; }
+    }
+    habits.splice(i, 1);
+    saveLog();
+    afterHabitChange();
+  }
+  function armTwoStep(btn, run) {
+    var armed = false, t = null;
+    btn.addEventListener("click", function () {
+      if (armed) { clearTimeout(t); run(); return; }
+      armed = true;
+      btn.textContent = "?";
+      btn.title = "Tap again to delete it and its logged days for good";
+      t = setTimeout(function () { armed = false; btn.textContent = "×"; }, 3000);
+    });
+  }
+
+  function addHabit() {
+    var fresh = { id: newId(), name: "New habit", detail: "", notes: "", when: "", mins: "",
+                  group: "morning", category: (categories[0] || {}).id || "", core: false, target: 0, days: [] };
+    habits.push(fresh);
+    afterHabitChange();
+    openDetail(fresh.id);
+  }
+
+  function afterHabitChange() {
+    sortHabits();
+    saveCfg();
+    if (editing) buildEdit(); else buildView();
+    rebuildGrid();
+    refreshAll();
+  }
+
+  function buildEdit() {
+    var root = document.getElementById("groups");
+    root.textContent = "";
+    var byGroup = {}, retiredRows = [];
+
+    habits.forEach(function (h) {
+      var row = el("div", "erow" + (h.retired ? " retired" : ""));
+      row.style.setProperty("--hue", colorOf(h));
+      row.dataset.id = h.id;
+
+      if (h.retired) {
+        row.appendChild(el("div", "erow-swatch"));
+      } else {
+        var handle = document.createElement("button");
+        handle.type = "button";
+        handle.className = "erow-swatch";
+        handle.id = "dh-" + h.id;
+        handle.title = "Drag to reorder — or focus it and use the arrow keys";
+        handle.setAttribute("aria-label", "Reorder " + h.name);
+        handle.addEventListener("pointerdown", function (ev) {
+          if (ev.button) return;
+          ev.preventDefault();
+          try { handle.setPointerCapture(ev.pointerId); } catch (e) {}
+          startDrag(row, ev);
+        });
+        handle.addEventListener("pointermove", function (ev) { if (drag) { ev.preventDefault(); moveDrag(ev); } });
+        handle.addEventListener("pointerup", endDrag);
+        handle.addEventListener("pointercancel", endDrag);
+        handle.addEventListener("keydown", function (ev) {
+          if (ev.key === "ArrowUp") { ev.preventDefault(); nudge(h, -1); }
+          else if (ev.key === "ArrowDown") { ev.preventDefault(); nudge(h, 1); }
+        });
+        row.appendChild(handle);
+      }
+
+      var nameBtn = document.createElement("button");
+      nameBtn.type = "button";
+      nameBtn.className = "erow-name";
+      nameBtn.style.cssText = "background:none;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0;";
+      nameBtn.appendChild(el("span", null, h.name));
+      var bits = [catOf(h.category).label, groupLabel(h.group)];
+      if (h.core) bits.push("Core");
+      if (h.target) bits.push(h.target + "× a week");
+      nameBtn.appendChild(el("span", "erow-sub", "  " + bits.join(" · ")));
+      nameBtn.addEventListener("click", function () { openDetail(h.id); });
+      row.appendChild(nameBtn);
+
+      var tools = el("div", "etools");
+      if (h.retired) {
+        var back = el("button", "icon-btn", "↩");
+        back.type = "button"; back.title = "Put it back on the list";
+        back.setAttribute("aria-label", "Restore");
+        back.addEventListener("click", function () { restore(h); });
+        var purge = el("button", "icon-btn del", "×");
+        purge.type = "button"; purge.title = "Delete for good, including its logged days";
+        purge.setAttribute("aria-label", "Delete for good");
+        armTwoStep(purge, function () { deleteForGood(h); });
+        tools.appendChild(back); tools.appendChild(purge);
+      } else {
+        var logged = hasHistory(h.id);
+        var del = el("button", "icon-btn del", logged ? "⊘" : "×");
+        del.type = "button";
+        del.title = logged ? "Retire — it leaves the list but keeps its days in the grid"
+                           : "Delete — you have never ticked this one";
+        del.setAttribute("aria-label", logged ? "Retire" : "Delete");
+        del.addEventListener("click", function () { retireOrDelete(h); });
+        tools.appendChild(del);
+      }
+      row.appendChild(tools);
+
+      if (h.retired) retiredRows.push(row);
+      else (byGroup[h.group] = byGroup[h.group] || []).push(row);
+    });
+
+    GROUPS.forEach(function (g) {
+      var head = el("div", "egroup-head");
+      head.dataset.group = g.id;
+      head.appendChild(el("span", "eyebrow", g.label));
+      head.appendChild(el("span", "rule"));
+      root.appendChild(head);
+      (byGroup[g.id] || []).forEach(function (r) { root.appendChild(r); });
+    });
+
+    var add = el("button", "add-btn", "+  Add a habit");
+    add.type = "button"; add.id = "add-habit";
+    add.addEventListener("click", addHabit);
+    root.appendChild(add);
+
+    var cats = el("button", "add-btn", "■  Categories & colours");
+    cats.type = "button"; cats.id = "manage-cats";
+    cats.addEventListener("click", openCategories);
+    root.appendChild(cats);
+
+    if (retiredRows.length) {
+      var rh = el("div", "retired-head");
+      rh.appendChild(el("span", "eyebrow", "Retired"));
+      rh.appendChild(el("span", "rule"));
+      root.appendChild(rh);
+      root.appendChild(el("p", "edit-note",
+        "Off the checklist, still in the grid. ↩ puts one back; × deletes it and its logged days for good."));
+      retiredRows.forEach(function (r) { root.appendChild(r); });
+    }
+  }
+
+  function setEditing(on) {
+    editing = on;
+    var btn = document.getElementById("edit-toggle");
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.textContent = on ? "Done" : "Edit list";
+    document.getElementById("edit-note").hidden = !on;
+    if (on) buildEdit();
+    else { sortHabits(); saveCfg(); buildView(); rebuildGrid(); refreshAll(); }
+  }
+
+  /* ---------- drag ---------- */
+
+  function startDrag(row, ev) {
+    var root = document.getElementById("groups");
+    var rect = row.getBoundingClientRect();
+    var ph = el("div", "drag-placeholder");
+    ph.style.height = rect.height + "px";
+    row.parentNode.insertBefore(ph, row);
+    drag = { row: row, ph: ph, root: root, grabY: ev.clientY - rect.top };
+    row.classList.add("dragging");
+    row.style.width = rect.width + "px";
+    row.style.left = rect.left + "px";
+    row.style.top = rect.top + "px";
+    document.body.style.userSelect = "none";
+  }
+
+  function moveDrag(ev) {
+    if (!drag) return;
+    drag.row.style.top = (ev.clientY - drag.grabY) + "px";
+    var kids = drag.root.children;
+    for (var i = 0; i < kids.length; i++) {
+      var k = kids[i];
+      if (k === drag.row || k === drag.ph) continue;
+      var ok = k.classList.contains("egroup-head") ||
+               (k.classList.contains("erow") && !k.classList.contains("retired"));
+      if (!ok) continue;
+      var r = k.getBoundingClientRect();
+      if (ev.clientY < r.top + r.height / 2) { drag.root.insertBefore(drag.ph, k); return; }
+    }
+    var add = document.getElementById("add-habit");
+    if (add) drag.root.insertBefore(drag.ph, add);
+  }
+
+  function endDrag() {
+    if (!drag) return;
+    var row = drag.row, ph = drag.ph, root = drag.root;
+    row.classList.remove("dragging");
+    row.style.width = ""; row.style.left = ""; row.style.top = "";
+    root.insertBefore(row, ph);
+    ph.parentNode.removeChild(ph);
+    document.body.style.userSelect = "";
+    drag = null;
+    commitOrderFromDom(root);
+  }
+
+  function commitOrderFromDom(root) {
+    var order = [], cur = GROUPS[0].id, kids = root.children;
+    for (var i = 0; i < kids.length; i++) {
+      var k = kids[i];
+      if (k.id === "add-habit") break;
+      if (k.classList.contains("egroup-head")) { cur = k.dataset.group; continue; }
+      if (!k.classList.contains("erow") || k.classList.contains("retired")) continue;
+      var h = habitById(k.dataset.id);
+      if (h) { h.group = cur; order.push(h); }
+    }
+    habits.forEach(function (h) { if (h.retired) order.push(h); });
+    if (order.length === habits.length) habits = order;
+    afterHabitChange();
+  }
+
+  function nudge(h, delta) {
+    var act = activeHabits(), at = act.indexOf(h), to = at + delta;
+    if (at === -1 || to < 0 || to >= act.length) return;
+    var other = act[to];
+    if (other.group !== h.group) { h.group = other.group; }
+    else { act[at] = other; act[to] = h; }
+    habits = act.concat(habits.filter(function (x) { return x.retired; }));
+    afterHabitChange();
+    var back = document.getElementById("dh-" + h.id);
+    if (back) back.focus();
+  }
+
+  /* ---------- grid ---------- */
+
+  function applyCellSize() {
+    var n = habits.length;
+    var cell = n <= 8 ? 8 : n <= 12 ? 7 : n <= 18 ? 6 : n <= 26 ? 5 : 4;
+    document.documentElement.style.setProperty("--cell", cell + "px");
+    document.documentElement.style.setProperty("--gap", (n <= 18 ? 2 : 1) + "px");
+  }
+
+  function rebuildGrid() { buildMonths(new Date().getFullYear()); markFuture(); paintAll(); }
+
+  function buildMonths(year) {
+    applyCellSize();
+    var root = document.getElementById("months");
+    root.textContent = "";
+    cells = {}; dayCols = {}; weekEls = {};
+    var order = gridOrder();
+
+    for (var m = 0; m < 12; m++) {
+      var block = el("div", "month-block");
+      var label = el("div", "month-label");
+      label.appendChild(el("span", null, MONTHS[m]));
+      var count = el("span", "m-count");
+      count.id = "mcount-" + m;
+      label.appendChild(count);
+      block.appendChild(label);
+
+      var strip = el("div", "month-days");
+      var total = new Date(year, m + 1, 0).getDate();
+      var wk = null, wkKey = null;
+
+      for (var d = 1; d <= total; d++) {
+        var date = new Date(year, m, d);
+        var key = keyOf(date);
+        var mon = mondayOf(key);
+
+        if (mon !== wkKey) {
+          wk = el("div", "week");
+          wk.dataset.week = mon;
+          (function (mk) {
+            wk.addEventListener("click", function () { openWeek(mk); });
+            wk.addEventListener("mouseenter", function () { hotWeek(mk); });
+            wk.addEventListener("mouseleave", function () { hotWeek(null); });
+          })(mon);
+          (weekEls[mon] = weekEls[mon] || []).push(wk);
+          strip.appendChild(wk);
+          wkKey = mon;
+        }
+
+        var col = el("div", "day-col");
+        col.dataset.label = DAYS_LONG[date.getDay()] + " " + d + " " + MONTHS[m];
+
+        var lastCat = null;
+        order.forEach(function (h) {
+          if (lastCat !== null && h.category !== lastCat) col.appendChild(el("i", "catgap"));
+          lastCat = h.category;
+          var sq = el("i");
+          col.appendChild(sq);
+          cells[key + "|" + h.id] = sq;
+        });
+
+        dayCols[key] = col;
+        wk.appendChild(col);
+      }
+
+      block.appendChild(strip);
+      root.appendChild(block);
+    }
+    renderedYear = year;
+  }
+
+  var hotKey = null;
+
+  // only the two week-groups that change get touched, so hovering never thrashes the DOM
+  function hotWeek(mondayKey) {
+    if (mondayKey === hotKey) return;
+    if (hotKey && weekEls[hotKey]) {
+      weekEls[hotKey].forEach(function (n) { n.classList.remove("hot"); });
+    }
+    hotKey = mondayKey;
+    if (hotKey && weekEls[hotKey]) {
+      weekEls[hotKey].forEach(function (n) { n.classList.add("hot"); });
+    }
+    var hint = document.getElementById("grid-hint");
+    hint.textContent = "";
+    if (mondayKey) {
+      hint.appendChild(el("b", null, weekLabel(mondayKey)));
+      hint.appendChild(document.createTextNode(" \u2014 click for the week's breakdown"));
+    } else {
+      hint.appendChild(document.createTextNode(
+        "Each column is a day, grouped into weeks and banded by category. Hover a week for its dates; click it for the breakdown."));
+    }
+  }
+
+  function paintDay(key) {
+    habits.forEach(function (h) {
+      var sq = cells[key + "|" + h.id];
+      if (!sq) return;
+      var f = fillOf(key, h);
+      sq.style.background = f ? colorOf(h) : "var(--empty)";
+      sq.style.opacity = f === 1 ? "0.42" : "";
+      sq.title = f === 1 ? h.name + " \u2014 part of it" : "";
+    });
+    var col = dayCols[key];
+    if (col) col.title = col.dataset.label + " — " + scoreOf(key) + "/" + requiredOn(key).length;
+  }
+  function paintAll() {
+    for (var key in dayCols) if (Object.prototype.hasOwnProperty.call(dayCols, key)) paintDay(key);
+    paintMonthCounts();
+  }
+  function paintMonthCounts() {
+    for (var m = 0; m < 12; m++) {
+      var total = new Date(renderedYear, m + 1, 0).getDate(), hit = 0;
+      for (var d = 1; d <= total; d++) if (doneOn(keyOf(new Date(renderedYear, m, d))).length) hit++;
+      var e = document.getElementById("mcount-" + m);
+      if (e) e.textContent = hit ? hit + " d" : "";
+    }
+  }
+  function markFuture() {
+    var t = new Date();
+    t.setHours(23, 59, 59, 999);
+    for (var key in dayCols) {
+      if (!Object.prototype.hasOwnProperty.call(dayCols, key)) continue;
+      if (dateOf(key) > t) dayCols[key].classList.add("future");
+    }
+    if (dayCols[todayKey]) dayCols[todayKey].classList.add("is-today");
+    if (dayCols[viewKey]) dayCols[viewKey].classList.add("is-viewing");
+  }
+
+  /* ---------- painting ---------- */
+
+  function paintArc() {
+    var root = document.getElementById("arc");
+    root.textContent = "";
+    categories.forEach(function (c) {
+      var mine = activeHabits().filter(function (h) { return h.category === c.id; });
+      if (!mine.length) return;
+      var seg = el("div", "arc-seg");
+      seg.style.flexGrow = String(mine.length);
+      seg.style.setProperty("--seg",
+        "linear-gradient(90deg," + mine.map(colorOf).join(",") + ")");
+      seg.title = c.label;
+      root.appendChild(seg);
+    });
+  }
+
+  function paintLegend() {
+    var root = document.getElementById("legend");
+    root.textContent = "";
+    categories.forEach(function (c) {
+      var mine = habits.filter(function (h) { return h.category === c.id; });
+      if (!mine.length) return;
+      var box = el("div", "legend-cat");
+      box.appendChild(el("div", "legend-cat-name", c.label));
+      mine.forEach(function (h) {
+        var item = el("span", "legend-item" + (h.retired ? " retired" : ""));
+        item.style.setProperty("--hue", colorOf(h));
+        item.appendChild(el("i"));
+        item.appendChild(el("span", null, h.name));
+        if (h.retired) item.appendChild(el("span", "retired-tag", "retired"));
+        else item.appendChild(el("span", "pct", rateLabel(h)));
+        box.appendChild(item);
+      });
+      root.appendChild(box);
+    });
+  }
+
+  function buildTodayCol() {
+    var col = document.getElementById("today-col");
+    col.textContent = "";
+    activeHabits().forEach(function (h) {
+      var sq = el("i");
+      sq.id = "tc-" + h.id;
+      col.appendChild(sq);
+    });
+  }
+  function paintTodayCol() {
+    buildTodayCol();
+    activeHabits().forEach(function (h) {
+      var sq = document.getElementById("tc-" + h.id);
+      if (!sq) return;
+      var f = fillOf(viewKey, h);
+      sq.style.background = f ? colorOf(h) : "var(--empty)";
+      sq.style.opacity = f === 1 ? "0.42" : "";
+    });
+  }
+
+  function paintStatus() {
+    var coreList = activeHabits().filter(function (h) { return h.core; });
+    var coreHit = coreList.filter(function (h) { return isOn(viewKey, h.id); }).length;
+    var ok = coreList.length && coreHit === coreList.length;
+
+    var chip = document.getElementById("status-core");
+    chip.className = "status-core" + (ok ? " clear" : "");
+    chip.style.setProperty("--ok", "oklch(var(--lum) var(--chroma) 150)");
+    chip.textContent = coreList.length
+      ? (ok ? "Core clear" : "Core " + coreHit + "/" + coreList.length)
+      : "No core set";
+
+    var daily = requiredOn(viewKey).length, score = scoreOf(viewKey);
+    var count = document.getElementById("status-count");
+    count.textContent = "";
+    var b = el("b", null, score + " of " + daily);
+    count.appendChild(b);
+    count.appendChild(document.createTextNode(" daily"));
+
+    var wk = weeklyActive();
+    if (wk.length) {
+      var mon = mondayOf(viewKey);
+      var met = wk.filter(function (h) { return weekCount(mon, h.id) >= h.target; }).length;
+      count.appendChild(document.createTextNode("  ·  " + met + " of " + wk.length + " weekly on target"));
+    }
+
+    var next = null, fromGroup = null;
+    var onToday = (viewKey === todayKey);
+    var order = onToday ? lookOrder() : GROUPS.map(function (g) { return g.id; });
+    order.some(function (gid) {
+      return groupItems(gid).some(function (h) {
+        if (dueState(h, viewKey) === "off" || isOn(viewKey, h.id)) return false;
+        next = h; fromGroup = gid; return true;
+      });
+    });
+
+    var nx = document.getElementById("status-next");
+    nx.textContent = "";
+    if (!next) {
+      nx.textContent = onToday ? "Everything on the list is done." : "Nothing left open that day.";
+      return;
+    }
+    var ids = GROUPS.map(function (g) { return g.id; });
+    var behind = onToday && fromGroup !== "anytime" &&
+                 ids.indexOf(fromGroup) < ids.indexOf(currentGroup());
+    nx.appendChild(document.createTextNode(
+      behind ? "Still open from " + groupLabel(fromGroup).toLowerCase() + " — " : "Next up — "));
+    nx.appendChild(el("b", null, next.name));
+    if (next.mins) nx.appendChild(document.createTextNode(", " + next.mins));
+  }
+
+  function paintStats() {
+    var logged = 0, full = 0;
+    for (var key in days) {
+      if (!Object.prototype.hasOwnProperty.call(days, key)) continue;
+      if (doneOn(key).length) logged++;
+      var need = requiredOn(key).length;
+      if (need && scoreOf(key) === need) full++;
+    }
+    var streak = coreStreak();
+    var data = [
+      { label: "Core streak", value: streak + (streak === 1 ? " day" : " days") },
+      { label: "Days logged", value: String(logged) },
+      { label: "Clean sweeps", value: String(full) }
+    ];
+    var root = document.getElementById("stats");
+    root.textContent = "";
+    data.forEach(function (s) {
+      var wrap = document.createElement("div");
+      wrap.appendChild(el("div", "eyebrow", s.label));
+      wrap.appendChild(el("span", "stat-n", s.value));
+      root.appendChild(wrap);
+    });
+  }
+
+  function coreStreak() {
+    var d = new Date();
+    d.setHours(12, 0, 0, 0);
+    if (!coreDone(keyOf(d))) d.setDate(d.getDate() - 1);
+    var n = 0;
+    for (var guard = 0; guard < 2000; guard++) {
+      if (!coreDone(keyOf(d))) break;
+      n++;
+      d.setDate(d.getDate() - 1);
+    }
+    return n;
+  }
+
+  function paintCoreLine() {
+    var names = activeHabits().filter(function (h) { return h.core; }).map(function (h) { return h.name; });
+    document.getElementById("core-line").textContent = names.length
+      ? "Core — " + names.join(" · ") + ". Hit those and the day counts."
+      : "Nothing is marked Core, so any tick counts the day.";
+  }
+
+  function paintDateLine() {
+    var d = dateOf(viewKey);
+    document.getElementById("date-line").textContent =
+      DAYS_LONG[d.getDay()] + " " + d.getDate() + " " + MONTHS[d.getMonth()];
+    var delta = dayDistance(viewKey);
+    document.getElementById("date-rel").textContent =
+      delta === 0 ? "" : delta === -1 ? "yesterday" : (-delta) + " days ago";
+    var onToday = (viewKey === todayKey);
+    document.getElementById("day-next").disabled = onToday;
+    document.getElementById("day-today").hidden = onToday;
+    document.getElementById("col-label").textContent = onToday ? "Today" : "Viewing";
+  }
+
+  function paintRows() {
+    activeHabits().forEach(function (h) {
+      var row = document.getElementById("row-" + h.id);
+      if (row) row.setAttribute("aria-pressed", isOn(viewKey, h.id) ? "true" : "false");
+      if (h.target > 0) {
+        var chip = document.getElementById("chip-" + h.id);
+        if (chip) {
+          var n = weekCount(mondayOf(viewKey), h.id);
+          chip.textContent = n + "/" + h.target + " wk";
+          chip.className = "week-chip" + (n >= h.target ? " met" : "");
+          chip.style.setProperty("--ok", "oklch(var(--lum) var(--chroma) 150)");
+        }
+      }
+      var hn = document.getElementById("hint-" + h.id);
+      if (hn) hn.textContent = hintFor(h, viewKey);
+      var sc = document.getElementById("streak-" + h.id);
+      if (sc) {
+        var st = streakOf(h);
+        sc.textContent = st.n ? "\u25B2 " + st.n : "";
+        sc.className = "streak-chip" + (st.n >= 3 ? " hot" : "");
+        sc.title = st.n ? st.n + " " + st.unit + " running" : "No streak yet";
+      }
+    });
+    paintTodayCol();
+    paintStatus();
+  }
+
+  function refreshAll() {
+    paintDateLine();
+    paintArc();
+    paintLegend();
+    if (!editing) paintRows(); else { paintTodayCol(); paintStatus(); }
+    paintAll();
+    paintStats();
+    paintCoreLine();
+    if (!hotKey) hotWeek(null);
+  }
+
+  /* ---------- interaction ---------- */
+
+  function toggle(id) {
+    var h = habitById(id), on = !isOn(viewKey, id);
+    setOn(viewKey, id, on);
+    // ticking the parent outright records whatever it was recommending, so the
+    // rotation stays honest even when you never open the sheet
+    if (h && partsOf(h)) {
+      if (on) {
+        if (partsOn(viewKey, id).length < needOf(h)) {
+          writeParts(viewKey, id, partsOn(viewKey, id).concat(suggestParts(h, viewKey)));
+        }
+      } else {
+        writeParts(viewKey, id, []);
+      }
+    }
+    paintRows();
+    paintDay(viewKey);
+    paintMonthCounts();
+    paintStats();
+    paintLegend();
+    saveLog();
+  }
+
+  function goToDay(key) {
+    if (!key || key > todayKey) return;
+    if (+key.split("-")[0] !== renderedYear) return;
+    if (dayCols[viewKey]) dayCols[viewKey].classList.remove("is-viewing");
+    viewKey = key;
+    if (dayCols[viewKey]) dayCols[viewKey].classList.add("is-viewing");
+    refreshAll();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function refreshDay() {
+    var k = keyOf(new Date());
+    if (k === todayKey) {
+      if (!editing && !openScrim && currentGroup() !== renderedGroup) { buildView(); refreshAll(); }
+      return;
+    }
+    var wasToday = (viewKey === todayKey);
+    if (dayCols[todayKey]) dayCols[todayKey].classList.remove("is-today");
+    todayKey = k;
+    if (wasToday) viewKey = k;
+    if (new Date().getFullYear() !== renderedYear) rebuildGrid();
+    if (dayCols[todayKey]) { dayCols[todayKey].classList.remove("future"); dayCols[todayKey].classList.add("is-today"); }
+    if (dayCols[viewKey]) dayCols[viewKey].classList.add("is-viewing");
+    refreshAll();
+  }
+
+  /* ---------- boot ---------- */
+
+  loadLocal();
+  todayKey = keyOf(new Date());
+  viewKey = todayKey;
+
+  buildView();
+  buildTodayCol();
+  buildMonths(new Date().getFullYear());
+  markFuture();
+  refreshAll();
+  setSaveState("saved on this device");
+
+  document.getElementById("edit-toggle").addEventListener("click", function () { setEditing(!editing); });
+  document.getElementById("day-prev").addEventListener("click", function () { goToDay(shiftDay(viewKey, -1)); });
+  document.getElementById("day-next").addEventListener("click", function () { goToDay(shiftDay(viewKey, 1)); });
+  document.getElementById("day-today").addEventListener("click", function () { goToDay(todayKey); });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { closeSheet(); return; }
+    if (editing || openScrim || e.metaKey || e.ctrlKey || e.altKey) return;
+    var t = e.target && e.target.tagName;
+    if (t === "INPUT" || t === "SELECT" || t === "TEXTAREA") return;
+    if (e.key === "ArrowLeft") goToDay(shiftDay(viewKey, -1));
+    if (e.key === "ArrowRight") goToDay(shiftDay(viewKey, 1));
+  });
+
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) refreshDay(); });
+  setInterval(refreshDay, 60000);
+
+  var connecting = window.claude && typeof window.claude.use === "function"
+    ? window.claude.use("db") : HabitCloud.connect();
+  if (connecting) {
+    connecting.then(function (store) {
+      if (!store) return;
+      db = store;
+      setSaveState("synced");
+
+      db.doc(CFG_PATH).onSnapshot(function (snap) {
+        if (cfgTimer || editing || openScrim || !snap.exists) return;
+        var data = snap.data() || {};
+        var list = normalise(data.habits);
+        if (!list) return;
+        var cl = normaliseCats(data.categories);
+        if (cl) categories = cl;
+        habits = list;
+        if (mergeNewDefaults(data.version || 0)) { cfgVersion = CFG_VERSION; saveCfg(); }
+        backfillFromDefaults();
+        sortHabits();
+        saveLocal();
+        buildView();
+        rebuildGrid();
+        refreshAll();
+      }, function (err) {
+        setSaveState(err && err.code === "revoked" ? "saved on this device" : "sync paused");
+      });
+
+      db.doc(LOG_PATH).onSnapshot(function (snap) {
+        if (logTimer || !snap.exists) return;
+        var data = snap.data() || {};
+        var remote = migrate(data.days || {});
+        var merged = {}, k;
+        for (k in remote) if (Object.prototype.hasOwnProperty.call(remote, k)) merged[k] = remote[k];
+        for (k in days) if (Object.prototype.hasOwnProperty.call(days, k) && !merged[k]) merged[k] = days[k];
+        days = merged;
+        var rp = data.parts || {}, mp = {};
+        for (k in rp) if (Object.prototype.hasOwnProperty.call(rp, k)) mp[k] = rp[k];
+        for (k in parts) if (Object.prototype.hasOwnProperty.call(parts, k) && !mp[k]) mp[k] = parts[k];
+        parts = mp;
+        saveLocal();
+        if (!editing && !openScrim) { paintRows(); paintAll(); paintStats(); paintLegend(); }
+      }, function (err) {
+        setSaveState(err && err.code === "revoked" ? "saved on this device" : "sync paused");
+      });
+    }, function () {});
+  }
+})();
+</script>
+
+</body></html>
