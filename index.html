@@ -789,7 +789,25 @@ var HabitCloud = (function () {
     }).then(function (session) { return makeDb(session.user.id); });
   }
 
-  return { connect: connect, client: sb };
+  /* When each habit got ticked today ("log/times"), so Atticus can learn
+     your usual times and suggest better ones. */
+  function recordTime(id, key, on) {
+    if (!sb) return;
+    sb.auth.getSession().then(function (r) {
+      var uid = r.data && r.data.session && r.data.session.user.id;
+      if (!uid) return;
+      sb.from("docs").select("data").eq("path", "log/times").maybeSingle().then(function (res) {
+        var all = (res.data && res.data.data) || {};
+        var day = all[key] || {};
+        if (on) { var d = new Date(); day[id] = ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
+        else delete day[id];
+        all[key] = day;
+        sb.from("docs").upsert({ user_id: uid, path: "log/times", data: all }, { onConflict: "user_id,path" }).then(function () {});
+      });
+    });
+  }
+
+  return { connect: connect, client: sb, recordTime: recordTime };
 })();
 </script>
 <script>
@@ -3099,6 +3117,7 @@ var HabitCloud = (function () {
   function toggle(id) {
     var h = habitById(id), on = !isOn(viewKey, id);
     setOn(viewKey, id, on);
+    if (viewKey === todayKey && window.HabitCloud) HabitCloud.recordTime(id, viewKey, on);
     // ticking the parent outright records whatever it was recommending, so the
     // rotation stays honest even when you never open the sheet
     if (h && partsOf(h)) {
