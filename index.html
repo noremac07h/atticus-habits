@@ -585,6 +585,18 @@
     overflow-wrap: break-word;
   }
   .row[aria-pressed="true"] .row-hint { color: var(--ink-faint); }
+  /* sub-checks right on the checklist */
+  .subchecks { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 8px 46px; }
+  .sub-pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 7px;
+    border-radius: 999px; border: 1px solid var(--line-soft); background: transparent;
+    color: inherit; font: inherit; font-size: 12.5px; cursor: pointer;
+  }
+  .sub-pill:hover { border-color: var(--hue); }
+  .sub-pill .sub-box { width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid var(--line); flex: none; }
+  .sub-pill.on { background: color-mix(in oklab, var(--hue) 14%, transparent); border-color: var(--hue); }
+  .sub-pill.on .sub-box { background: var(--hue); border-color: var(--hue); }
+  .sub-pill.on .sub-name { opacity: 0.75; }
   .part-list { display: grid; gap: 6px; margin-top: 10px; }
   .part-row {
     display: flex; align-items: center; gap: 10px; width: 100%;
@@ -1240,6 +1252,43 @@ var HabitCloud = (function () {
     if (!(k >= 1)) k = 1;
     return Math.min(k, p.length);
   }
+  // every part is needed (a checklist), rather than "any N" of a rotation
+  function needsAll(h) { var p = partsOf(h); return !!p && needOf(h) >= p.length; }
+
+  // the small sub-checks under a habit's row
+  function makeSubchecks(h) {
+    var box = el("div", "subchecks");
+    box.id = "subs-" + h.id;
+    box.style.setProperty("--hue", colorOf(h));
+    (partsOf(h) || []).forEach(function (p) {
+      var b = el("button", "sub-pill");
+      b.type = "button";
+      b.dataset.part = p.id;
+      b.appendChild(el("span", "sub-box"));
+      b.appendChild(el("span", "sub-name", p.label));
+      b.addEventListener("click", function () {
+        var on = !isPartOn(viewKey, h.id, p.id);
+        var list = setPartOn(viewKey, h.id, p.id, on);
+        var was = isOn(viewKey, h.id), now = list.length >= needOf(h);
+        setOn(viewKey, h.id, now);
+        if (was !== now && viewKey === todayKey && window.HabitCloud) HabitCloud.recordTime(h.id, viewKey, now);
+        saveLog();
+        paintRows(); paintDay(viewKey); paintMonthCounts(); paintStats(); paintLegend();
+      });
+      box.appendChild(b);
+    });
+    paintSubchecks(h, box);
+    return box;
+  }
+  function paintSubchecks(h, box) {
+    box = box || document.getElementById("subs-" + h.id);
+    if (!box) return;
+    var on = partsOn(viewKey, h.id);
+    Array.prototype.forEach.call(box.children, function (b) {
+      b.className = "sub-pill" + (on.indexOf(b.dataset.part) !== -1 ? " on" : "");
+    });
+  }
+
   function partLabel(h, pid) {
     var p = partsOf(h) || [];
     for (var i = 0; i < p.length; i++) if (p[i].id === pid) return p[i].label;
@@ -1634,7 +1683,7 @@ var HabitCloud = (function () {
     } else if (h.detail) {
       text.appendChild(el("span", "row-detail", h.detail));
     }
-    if (state !== "off" && partsOf(h)) {
+    if (state !== "off" && partsOf(h) && !needsAll(h)) {
       var hint = el("span", "row-hint", hintFor(h, viewKey));
       hint.id = "hint-" + h.id;
       text.appendChild(hint);
@@ -1688,7 +1737,10 @@ var HabitCloud = (function () {
         head.insertBefore(el("span", "now-chip", "now"), head.childNodes[1]);
       }
       s.appendChild(head);
-      items.forEach(function (h) { s.appendChild(makeRow(h)); });
+      items.forEach(function (h) {
+        s.appendChild(makeRow(h));
+        if (partsOf(h) && dueState(h, viewKey) !== "off") s.appendChild(makeSubchecks(h));
+      });
       root.appendChild(s);
     });
   }
@@ -1776,7 +1828,7 @@ var HabitCloud = (function () {
 
     if (partsOf(h) && !h.retired) {
       var pf = el("div", "sheet-field");
-      pf.appendChild(el("label", null, "Areas \u2014 any " + needOf(h) + " counts as done"));
+      pf.appendChild(el("label", null, needsAll(h) ? "Parts \u2014 all of them count as done" : "Areas \u2014 any " + needOf(h) + " counts as done"));
       var plist = el("div", "part-list");
       pf.appendChild(plist);
       var pnote = el("p", "part-note", "");
@@ -1965,6 +2017,42 @@ var HabitCloud = (function () {
     detail.placeholder = "The one line that shows on the row";
     detail.addEventListener("input", function () { h.detail = detail.value; saveCfg(); refreshAll(); });
     sheet.appendChild(field("Summary line", detail));
+
+    var partsIn = document.createElement("input");
+    partsIn.type = "text"; partsIn.id = "d-parts";
+    partsIn.value = (partsOf(h) || []).map(function (p) { return p.label; }).join(" \u00b7 ");
+    partsIn.placeholder = "Sub-checks, separated by \u00b7 or commas (leave empty for none)";
+    var needSel = document.createElement("select");
+    needSel.id = "d-need";
+    function fillNeed() {
+      var n = (partsOf(h) || []).length;
+      needSel.textContent = "";
+      var all = document.createElement("option"); all.value = "all"; all.textContent = "All of them"; needSel.appendChild(all);
+      for (var k = 1; k < n; k++) {
+        var o = document.createElement("option"); o.value = String(k); o.textContent = "Any " + k; needSel.appendChild(o);
+      }
+      needSel.value = needsAll(h) || !n ? "all" : String(needOf(h));
+      needSel.disabled = n < 2;
+    }
+    function applyParts() {
+      var labels = partsIn.value.split(/\s*[\u00b7,]\s*/).map(function (x) { return x.trim(); }).filter(Boolean);
+      var old = partsOf(h) || [], used = {};
+      h.parts = labels.map(function (l) {
+        var hit = old.filter(function (p) { return p.label.toLowerCase() === l.toLowerCase(); })[0];
+        var id = hit ? hit.id : (l.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 14) || "part");
+        while (used[id]) id += "x";
+        used[id] = true;
+        return { id: id, label: l };
+      });
+      var want = needSel.value === "all" ? h.parts.length : parseInt(needSel.value, 10);
+      h.need = Math.max(1, Math.min(want || h.parts.length, h.parts.length || 1));
+      fillNeed(); saveCfg(); refreshAll();
+    }
+    partsIn.addEventListener("change", applyParts);
+    needSel.addEventListener("change", applyParts);
+    fillNeed();
+    sheet.appendChild(field("Parts", partsIn));
+    sheet.appendChild(field("Done when", needSel));
 
     var when = document.createElement("input");
     when.type = "text"; when.value = h.when; when.id = "d-when";
@@ -3136,6 +3224,7 @@ var HabitCloud = (function () {
       }
       var hn = document.getElementById("hint-" + h.id);
       if (hn) hn.textContent = hintFor(h, viewKey);
+      if (partsOf(h)) paintSubchecks(h);
       var sc = document.getElementById("streak-" + h.id);
       if (sc) {
         var st = streakOf(h);
