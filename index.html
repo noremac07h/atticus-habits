@@ -585,6 +585,8 @@
     overflow-wrap: break-word;
   }
   .row[aria-pressed="true"] .row-hint { color: var(--ink-faint); }
+  .rough-btn[aria-pressed="true"] { background: color-mix(in oklab, var(--hue, #8a7cf0) 18%, transparent); border-color: currentColor; }
+  .row-small { display: block; font-size: 12px; margin-top: 2px; color: var(--hue); }
   .time-chip {
     flex: none; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 11.5px;
     color: var(--ink-faint); padding: 2px 6px; border-radius: 5px; cursor: pointer;
@@ -727,6 +729,7 @@
         <button type="button" class="icon-btn" id="day-prev" aria-label="Previous day" title="Previous day">‹</button>
         <button type="button" class="icon-btn" id="day-next" aria-label="Next day" title="Next day">›</button>
         <button type="button" class="btn" id="day-today" hidden>Back to today</button>
+        <button type="button" class="btn rough-btn" id="day-rough" title="On a rough day, the small version of each habit counts">Rough day</button>
         <span class="date-rel" id="date-rel"></span>
       </div>
     </div>
@@ -869,15 +872,38 @@ var HabitCloud = (function () {
     } else if (times[key]) { delete times[key][id]; }
     if (!sb) return;
     var mine = (times[key] || {})[id];
-    sb.auth.getSession().then(function (r) {
+    changeDoc("log/times", function (all) {
+      var day = all[key] || {};
+      if (on) day[id] = mine; else delete day[id];
+      all[key] = day;
+      return all;
+    }).then(function (all) { times = all; }, function () {});
+  }
+
+  // Read-change-write that can't clobber someone else's save (Atticus,
+  // another device): the row is only written if its version hasn't moved
+  // since we read it; otherwise read again and redo the change.
+  function changeDoc(path, change, tries) {
+    tries = tries || 0;
+    return sb.auth.getSession().then(function (r) {
       var uid = r.data && r.data.session && r.data.session.user.id;
-      if (!uid) return;
-      sb.from("docs").select("data").eq("path", "log/times").maybeSingle().then(function (res) {
-        var all = (res.data && res.data.data) || {};
-        var day = all[key] || {};
-        if (on) day[id] = mine; else delete day[id];
-        all[key] = day;
-        sb.from("docs").upsert({ user_id: uid, path: "log/times", data: all }, { onConflict: "user_id,path" }).then(function () {});
+      if (!uid) throw new Error("not signed in");
+      return sb.from("docs").select("data,version").eq("path", path).maybeSingle().then(function (res) {
+        if (res.error) throw res.error;
+        var row = res.data;
+        var data = change(row ? JSON.parse(JSON.stringify(row.data || {})) : {});
+        var write = row
+          ? sb.from("docs").update({ data: data, version: (row.version || 1) + 1 }).eq("path", path).eq("version", row.version || 1).select("path")
+          : sb.from("docs").insert({ user_id: uid, path: path, data: data, version: 1 }).select("path");
+        return write.then(function (w) {
+          var lost = w.error ? (row ? false : w.error.code === "23505") : (!w.data || !w.data.length);
+          if (w.error && !lost) throw w.error;
+          if (lost) {
+            if (tries >= 4) throw new Error("kept changing");
+            return changeDoc(path, change, tries + 1);
+          }
+          return data;
+        });
       });
     });
   }
@@ -890,7 +916,7 @@ var HabitCloud = (function () {
     });
   }
 
-  return { connect: connect, client: sb, recordTime: recordTime, loadTimes: loadTimes, timeOf: timeOf };
+  return { connect: connect, client: sb, recordTime: recordTime, loadTimes: loadTimes, timeOf: timeOf, changeDoc: changeDoc };
 })();
 </script>
 <script>
@@ -1048,6 +1074,11 @@ var HabitCloud = (function () {
   var DAY_INIT = ["M","T","W","T","F","S","S"];
 
   var habits = [], days = {}, parts = {}, db = null;
+  // Changes to the log since the last save, sent as changes (not the whole
+  // log) so they apply on top of what Atticus or another device saved.
+  var pendingOps = [], fullLog = false;
+  var roughDays = [];   // days where small versions count (log "minimum")
+  function isRough(key) { return roughDays.indexOf(key) !== -1; }
   var editing = false, logTimer = null, cfgTimer = null;
   var cells = {}, dayCols = {}, weekEls = {};
   var todayKey = "", viewKey = "";
@@ -1234,6 +1265,7 @@ var HabitCloud = (function () {
   function isOn(key, id) { return doneOn(key).indexOf(id) !== -1; }
 
   function setOn(key, id, on) {
+    pendingOps.push({ t: "d", k: key, id: id, on: !!on });
     var list = doneOn(key).slice(), at = list.indexOf(id);
     if (on && at === -1) list.push(id);
     if (!on && at !== -1) list.splice(at, 1);
@@ -1340,6 +1372,7 @@ var HabitCloud = (function () {
   function isPartOn(key, id, pid) { return partsOn(key, id).indexOf(pid) !== -1; }
 
   function writeParts(key, id, list) {
+    pendingOps.push({ t: "p", k: key, id: id, list: list.slice() });
     var d = parts[key] || (parts[key] = {});
     if (list.length) d[id] = list; else delete d[id];
     var any = false, k;
@@ -1472,6 +1505,7 @@ var HabitCloud = (function () {
         notes: typeof h.notes === "string" ? h.notes : "",
         when: typeof h.when === "string" ? h.when : "",
         mins: typeof h.mins === "string" ? h.mins : "",
+        min: typeof h.min === "string" ? h.min : "",
         group: g,
         category: c,
         core: !!h.core,
@@ -1610,8 +1644,55 @@ var HabitCloud = (function () {
     clearTimeout(logTimer);
     logTimer = setTimeout(function () {
       var t = logTimer;
-      db.doc(LOG_PATH).set({ days: days, parts: parts, updatedAt: new Date().toISOString() })
-        .then(function () { if (logTimer === t) logTimer = null; setSaveState("saved"); }, onSaveError);
+      var ops = pendingOps; pendingOps = [];
+      var whole = fullLog || !ops.length || !(window.HabitCloud && HabitCloud.changeDoc && HabitCloud.client);
+      fullLog = false;
+      var saving = whole
+        ? db.doc(LOG_PATH).set({ days: days, parts: parts, minimum: roughDays, updatedAt: new Date().toISOString() })
+        : HabitCloud.changeDoc(LOG_PATH, function (data) {
+            var d = data.days || {}, p = data.parts || {};
+            ops.forEach(function (o) {
+              if (o.t === "m") {
+                var m = (data.minimum || []).filter(function (k) { return k !== o.k; });
+                if (o.on) m.push(o.k);
+                data.minimum = m;
+                return;
+              }
+              if (o.t === "d") {
+                var list = (d[o.k] || []).slice(), at = list.indexOf(o.id);
+                if (o.on && at === -1) list.push(o.id);
+                if (!o.on && at !== -1) list.splice(at, 1);
+                if (list.length) d[o.k] = list; else delete d[o.k];
+              } else {
+                var day = p[o.k] || {};
+                if (o.list.length) day[o.id] = o.list; else delete day[o.id];
+                if (Object.keys(day).length) p[o.k] = day; else delete p[o.k];
+              }
+            });
+            data.days = d; data.parts = p; data.updatedAt = new Date().toISOString();
+            return data;
+          }).then(function (merged) {
+            // what everyone saved, ours included, plus anything ticked since
+            var later = pendingOps.slice();
+            days = migrate(merged.days || {}); parts = merged.parts || {}; roughDays = merged.minimum || [];
+            later.forEach(function (o) {
+              if (o.t === "m") return;
+              if (o.t === "d") {
+                var list = doneOn(o.k).slice(), at = list.indexOf(o.id);
+                if (o.on && at === -1) list.push(o.id);
+                if (!o.on && at !== -1) list.splice(at, 1);
+                if (list.length) days[o.k] = list; else delete days[o.k];
+              } else {
+                var day = parts[o.k] || {};
+                if (o.list.length) day[o.id] = o.list; else delete day[o.id];
+                if (Object.keys(day).length) parts[o.k] = day; else delete parts[o.k];
+              }
+            });
+            saveLocal();
+            if (!editing && !openScrim) { paintRows(); paintAll(); paintStats(); paintLegend(); }
+          });
+      saving.then(function () { if (logTimer === t) logTimer = null; setSaveState("saved"); },
+                  function (err) { pendingOps = ops.concat(pendingOps); onSaveError(err); });
     }, 600);
   }
   function saveCfg() {
@@ -1722,6 +1803,7 @@ var HabitCloud = (function () {
     } else if (h.detail) {
       text.appendChild(el("span", "row-detail", h.detail));
     }
+    if (state !== "off" && isRough(viewKey) && h.min) text.appendChild(el("span", "row-small", "Small version: " + h.min));
     if (state !== "off" && partsOf(h) && !needsAll(h)) {
       var hint = el("span", "row-hint", hintFor(h, viewKey));
       hint.id = "hint-" + h.id;
@@ -2072,6 +2154,12 @@ var HabitCloud = (function () {
     detail.placeholder = "The one line that shows on the row";
     detail.addEventListener("input", function () { h.detail = detail.value; saveCfg(); refreshAll(); });
     sheet.appendChild(field("Summary line", detail));
+
+    var small = document.createElement("input");
+    small.type = "text"; small.value = h.min || ""; small.id = "d-min";
+    small.placeholder = "The small version for rough days, e.g. 5 minutes";
+    small.addEventListener("input", function () { h.min = small.value; saveCfg(); });
+    sheet.appendChild(field("Small version", small));
 
     var partsIn = document.createElement("input");
     partsIn.type = "text"; partsIn.id = "d-parts";
@@ -2753,6 +2841,7 @@ var HabitCloud = (function () {
       if (next.length) { days[k] = next; } else { delete days[k]; }
     }
     habits.splice(i, 1);
+    fullLog = true;
     saveLog();
     afterHabitChange();
   }
@@ -3262,6 +3351,8 @@ var HabitCloud = (function () {
     document.getElementById("day-next").disabled = onToday;
     document.getElementById("day-today").hidden = onToday;
     document.getElementById("col-label").textContent = onToday ? "Today" : "Viewing";
+    var rb = document.getElementById("day-rough");
+    if (rb) rb.setAttribute("aria-pressed", isRough(viewKey) ? "true" : "false");
   }
 
   function paintRows() {
@@ -3383,6 +3474,13 @@ var HabitCloud = (function () {
     if (e.key === "ArrowRight") goToDay(shiftDay(viewKey, 1));
   });
 
+  document.getElementById("day-rough").addEventListener("click", function () {
+    var on = !isRough(viewKey);
+    if (on) roughDays.push(viewKey); else roughDays = roughDays.filter(function (k) { return k !== viewKey; });
+    pendingOps.push({ t: "m", k: viewKey, on: on });
+    saveLog(); paintDateLine(); buildView(); refreshAll();
+  });
+
   document.addEventListener("visibilitychange", function () { if (!document.hidden) refreshDay(); });
   setInterval(refreshDay, 60000);
 
@@ -3430,6 +3528,7 @@ var HabitCloud = (function () {
         for (k in rp) if (Object.prototype.hasOwnProperty.call(rp, k)) mp[k] = rp[k];
         for (k in parts) if (Object.prototype.hasOwnProperty.call(parts, k) && !mp[k]) mp[k] = parts[k];
         parts = mp;
+        roughDays = data.minimum || roughDays;
         saveLocal();
         if (!editing && !openScrim) { paintRows(); paintAll(); paintStats(); paintLegend(); }
       }, function (err) {
