@@ -585,6 +585,12 @@
     overflow-wrap: break-word;
   }
   .row[aria-pressed="true"] .row-hint { color: var(--ink-faint); }
+  .time-chip {
+    flex: none; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 11.5px;
+    color: var(--ink-faint); padding: 2px 6px; border-radius: 5px; cursor: pointer;
+  }
+  .time-chip:hover { color: var(--hue); background: color-mix(in oklab, var(--hue) 10%, transparent); }
+  .time-chip:empty { display: none; }
   /* sub-checks right on the checklist */
   .subchecks { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 8px 46px; }
   .sub-pill {
@@ -850,23 +856,41 @@ var HabitCloud = (function () {
 
   /* When each habit got ticked today ("log/times"), so Atticus can learn
      your usual times and suggest better ones. */
-  function recordTime(id, key, on) {
+  // the latest known times, shown on the rows (day → habit → "HH:MM")
+  var times = {};
+  function timeOf(id, key) { return (times[key] || {})[id] || ""; }
+
+  // `at` ("HH:MM") sets a specific time, e.g. "I did it at noon"; without
+  // it, ticking records now.
+  function recordTime(id, key, on, at) {
+    if (on) {
+      var d = new Date();
+      (times[key] = times[key] || {})[id] = at || (("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2));
+    } else if (times[key]) { delete times[key][id]; }
     if (!sb) return;
+    var mine = (times[key] || {})[id];
     sb.auth.getSession().then(function (r) {
       var uid = r.data && r.data.session && r.data.session.user.id;
       if (!uid) return;
       sb.from("docs").select("data").eq("path", "log/times").maybeSingle().then(function (res) {
         var all = (res.data && res.data.data) || {};
         var day = all[key] || {};
-        if (on) { var d = new Date(); day[id] = ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
-        else delete day[id];
+        if (on) day[id] = mine; else delete day[id];
         all[key] = day;
         sb.from("docs").upsert({ user_id: uid, path: "log/times", data: all }, { onConflict: "user_id,path" }).then(function () {});
       });
     });
   }
 
-  return { connect: connect, client: sb, recordTime: recordTime };
+  function loadTimes(cb) {
+    if (!sb) return;
+    sb.from("docs").select("data").eq("path", "log/times").maybeSingle().then(function (res) {
+      times = (res.data && res.data.data) || {};
+      if (cb) cb();
+    });
+  }
+
+  return { connect: connect, client: sb, recordTime: recordTime, loadTimes: loadTimes, timeOf: timeOf };
 })();
 </script>
 <script>
@@ -1252,6 +1276,21 @@ var HabitCloud = (function () {
     if (!(k >= 1)) k = 1;
     return Math.min(k, p.length);
   }
+  // "12", "12:30", "3pm", "3:15 pm", "noon" → "HH:MM" (null if unreadable)
+  function parseTime(v) {
+    if (!v) return null;
+    v = String(v).trim().toLowerCase();
+    if (v === "noon") return "12:00";
+    if (v === "midnight") return "00:00";
+    var m = v.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
+    if (!m) return null;
+    var hh = parseInt(m[1], 10), mm = m[2] ? parseInt(m[2], 10) : 0;
+    if (m[3] === "pm" && hh < 12) hh += 12;
+    if (m[3] === "am" && hh === 12) hh = 0;
+    if (hh > 23 || mm > 59) return null;
+    return ("0" + hh).slice(-2) + ":" + ("0" + mm).slice(-2);
+  }
+
   // every part is needed (a checklist), rather than "any N" of a rotation
   function needsAll(h) { var p = partsOf(h); return !!p && needOf(h) >= p.length; }
 
@@ -1696,6 +1735,22 @@ var HabitCloud = (function () {
       chip.id = "chip-" + h.id;
       btn.appendChild(chip);
     }
+
+    // when it was ticked; click to change it ("I actually did it at noon")
+    var tc = el("span", "time-chip", "");
+    tc.id = "time-" + h.id;
+    tc.title = "When you did it (click to change)";
+    tc.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      if (!isOn(viewKey, h.id) || !window.HabitCloud) return;
+      var cur = HabitCloud.timeOf(h.id, viewKey);
+      var v = window.prompt("When did you do " + h.name + "? (e.g. 12:00 or 3:15pm)", cur || "");
+      var t = parseTime(v);
+      if (!t) return;
+      HabitCloud.recordTime(h.id, viewKey, true, t);
+      paintRows();
+    });
+    btn.appendChild(tc);
 
     var st = streakOf(h);
     var sc = el("span", "streak-chip" + (st.n >= 3 ? " hot" : ""), st.n ? "▲ " + st.n : "");
@@ -3225,6 +3280,8 @@ var HabitCloud = (function () {
       var hn = document.getElementById("hint-" + h.id);
       if (hn) hn.textContent = hintFor(h, viewKey);
       if (partsOf(h)) paintSubchecks(h);
+      var tcp = document.getElementById("time-" + h.id);
+      if (tcp) tcp.textContent = (isOn(viewKey, h.id) && window.HabitCloud && HabitCloud.timeOf(h.id, viewKey)) ? "\u2713 " + HabitCloud.timeOf(h.id, viewKey) : "";
       var sc = document.getElementById("streak-" + h.id);
       if (sc) {
         var st = streakOf(h);
@@ -3336,6 +3393,11 @@ var HabitCloud = (function () {
       if (!store) return;
       db = store;
       setSaveState("synced");
+      // tick times (shown on the rows), and again whenever the tab comes back
+      if (window.HabitCloud && HabitCloud.loadTimes) {
+        HabitCloud.loadTimes(paintRows);
+        document.addEventListener("visibilitychange", function () { if (!document.hidden) HabitCloud.loadTimes(paintRows); });
+      }
 
       db.doc(CFG_PATH).onSnapshot(function (snap) {
         if (cfgTimer || editing || openScrim || !snap.exists) return;
